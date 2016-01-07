@@ -10,4 +10,5 @@ int main() {
     s.prepare();
     s.loop();
     s.terminate();
+    //idea test commit
 }
