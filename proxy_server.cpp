@@ -39,7 +39,7 @@ void proxy_server::prepare() {
     CHK(bind(listenerSocket, (struct sockaddr *) &addr, sizeof(addr)));
     Log::d("Listener binded to host");
 
-    CHK(listen(listenerSocket, 1));
+    CHK(listen(listenerSocket, 10));
     Log::d("Start to listen host");
 
     static struct epoll_event ev;
@@ -76,7 +76,7 @@ void proxy_server::loop() {
                        + ":" + inttostr(ntohs(their_addr.sin_port))
                        + ", socket assigned to " + inttostr(client));
                 // setup nonblocking socket
-                setnonblocking(client);
+                //setnonblocking(client);
 
                 // set new client to event template
                 static struct epoll_event ev;
@@ -95,9 +95,16 @@ void proxy_server::loop() {
                 // send initial welcome message to client
                 int res;
                 std::string message = "Hello :)";
-                CHK2(res, send(client, message.c_str(), message.length(), 0));
-                Log::d("Message sended");
-            } else { // EPOLLIN event for others(new incoming message from client)
+                //CHK2(res, send(client, message.c_str(), message.length(), 0));
+                //Log::d("Message sended");
+            } else if (events[i].events & EPOLLHUP) { // EPOLLIN event for others(new incoming message from client)
+                Log::d("Epollhup");
+                int client = events[i].data.fd;
+                CHK(close(client));
+                clients_list.remove(client);
+                Log::d("Client with fd " + inttostr(client) + " has closed connection! And now we have "
+                       + inttostr(clients_list.size()) + " clients");
+            } else {
                 Log::d("Incoming message");
                 int client = events[i].data.fd;
                 char buf[1024];
@@ -110,13 +117,14 @@ void proxy_server::loop() {
                            + inttostr(clients_list.size()) + " clients");
                 } else {
                     std::string message(buf);
-                    message = message.substr(0, message.length() - 2);
+                    //message = message.substr(0, message.length() - 2);
                     Log::d("Client with fd " + inttostr(client) + " said '" + message + "'(len " +
                            inttostr(message.length()) + ")");
 
                     int res;
-                    CHK2(res, send(client, message.c_str(), message.length(), 0));
-                    CHK2(res, send(client, "\n", 1, 0));
+                    //CHK2(res, send(client, message.c_str(), message.length(), 0));
+                    //CHK2(res, send(client, "\n", 1, 0));
+                    CHK2(res, send(client, buf, 1024, 0));
                 }
             }
             // print epoll events handling statistics

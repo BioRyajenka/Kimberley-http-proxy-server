@@ -62,6 +62,7 @@ std::string eetostr(epoll_event ev) {
 }
 
 int setnonblocking(int sockfd) {
+    Log::d("Making " + inttostr(sockfd) + " non-blocking");
     CHK(fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFD, 0) | O_NONBLOCK));
     return 0;
 }
