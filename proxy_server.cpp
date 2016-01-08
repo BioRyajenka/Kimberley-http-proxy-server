@@ -7,8 +7,9 @@
 
 #include <sys/socket.h>
 #include <unistd.h>
+#include "handler.h"
 
-proxy_server::proxy_server(std::string host, int port) {
+proxy_server::proxy_server(std::string host, uint16_t port) {
     proxy_server::port = htons(port);
     proxy_server::host = inet_addr(host.c_str());
 
@@ -42,101 +43,85 @@ void proxy_server::prepare() {
     CHK(listen(listenerSocket, 10));
     Log::d("Start to listen host");
 
-    static struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLET;
-    ev.data.fd = listenerSocket;
-
-    CHK(epoll_ctl(epfd, EPOLL_CTL_ADD, listenerSocket, &ev));
-    Log::d("Main listener added to epoll!");
+    add_handler(listenerSocket, new server_handler(listenerSocket, this), EPOLLIN);
 }
 
 void proxy_server::loop() {
+    Log::d("Start looping");
     static struct epoll_event events[TARGET_CONNECTIONS];
     while (1) {
         int epoll_events_count;
-        CHK2(epoll_events_count,
-             epoll_wait(epfd, events, TARGET_CONNECTIONS, DEFAULT_TIMEOUT));
+        CHK2(epoll_events_count, epoll_wait(epfd, events, TARGET_CONNECTIONS, DEFAULT_TIMEOUT));
         Log::d("Epoll events count: " + inttostr(epoll_events_count));
 
         clock_t tStart = clock();
 
         for (int i = 0; i < epoll_events_count; i++) {
             Log::d("event " + inttostr(i) + ": " + eetostr(events[i]));
-            // EPOLLIN event for listener(new client connection)
-            if (events[i].data.fd == listenerSocket) {
-                int client;
-                struct sockaddr_in their_addr;
-                socklen_t socklen = sizeof(struct sockaddr_in);
-                CHK2(client,
-                     accept(listenerSocket, (struct sockaddr *) &their_addr,
-                            &socklen));
-
-                Log::d("connection from:"
-                       + std::string(inet_ntoa(their_addr.sin_addr))
-                       + ":" + inttostr(ntohs(their_addr.sin_port))
-                       + ", socket assigned to " + inttostr(client));
-                // setup nonblocking socket
-                //setnonblocking(client);
-
-                // set new client to event template
-                static struct epoll_event ev;
-                ev.data.fd = client;
-                ev.events = EPOLLIN;
-
-                // add new client to epoll
-                CHK(epoll_ctl(epfd, EPOLL_CTL_ADD, client, &ev));
-
-                // save new descriptor to further use
-                clients_list.push_back(client); // add new connection to list of clients
-                Log::d("Added new client(fd = " + inttostr(client)
-                       + ") to epoll and now clients_list.size = "
-                       + inttostr(clients_list.size()));
-
-                // send initial welcome message to client
-                int res;
-                std::string message = "Hello :)";
-                //CHK2(res, send(client, message.c_str(), message.length(), 0));
-                //Log::d("Message sended");
-            } else if (events[i].events & EPOLLHUP) { // EPOLLIN event for others(new incoming message from client)
-                Log::d("Epollhup");
-                int client = events[i].data.fd;
-                CHK(close(client));
-                clients_list.remove(client);
-                Log::d("Client with fd " + inttostr(client) + " has closed connection! And now we have "
-                       + inttostr(clients_list.size()) + " clients");
-            } else {
-                Log::d("Incoming message");
-                int client = events[i].data.fd;
-                char buf[1024];
-                int len;
-                CHK2(len, recv(client, buf, 1024, 0));
-                if (len == 0) {
-                    CHK(close(client));
-                    clients_list.remove(client);
-                    Log::d("Client with fd " + inttostr(client) + " has closed connection! And now we have "
-                           + inttostr(clients_list.size()) + " clients");
-                } else {
-                    std::string message(buf);
-                    //message = message.substr(0, message.length() - 2);
-                    Log::d("Client with fd " + inttostr(client) + " said '" + message + "'(len " +
-                           inttostr(message.length()) + ")");
-
-                    int res;
-                    //CHK2(res, send(client, message.c_str(), message.length(), 0));
-                    //CHK2(res, send(client, "\n", 1, 0));
-                    CHK2(res, send(client, buf, 1024, 0));
-                }
-            }
-            // print epoll events handling statistics
-            printf("Statistics: %d events handled at: %.2f second(s)\n",
-                   epoll_events_count,
-                   (double) (clock() - tStart) / CLOCKS_PER_SEC);
-            std::cout.flush();
+            handlers[events[i].data.fd]->handle(events[i]);
         }
+
+        printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
+               (double) (clock() - tStart) / CLOCKS_PER_SEC);
+        std::cout.flush();
     }
 }
 
+
 void proxy_server::terminate() {
+    //TODO: terminate all clients
     close(listenerSocket);
     close(epfd);
+}
+
+void proxy_server::add_handler(int fd, handler *h, uint events) {
+    Log::d("Trying to insert handler to fd " + inttostr(fd));
+    if (handlers.size() <= fd) {
+        handlers.resize(fd + 1);
+    }
+    handlers[fd] = h;
+    Log::d("And now handlers[" + inttostr(fd) + "] = " + (handlers[fd] ? "yes" : "no") + ", handlers.size() " + inttostr(handlers.size()));
+    epoll_event e;
+    e.data.fd = fd;
+    e.events = events;
+
+    if (epoll_ctl(this->epfd, EPOLL_CTL_ADD, fd, &e) < 0) {
+        Log::e("Failed to insert handler to epoll");
+        perror(("add_handler (fd=" + inttostr(fd) + ")").c_str());
+        std::cerr.flush();
+    } else {
+        Log::d("success");
+    }
+}
+
+void proxy_server::modify_handler(int fd, uint events) {
+    struct epoll_event e;
+
+    if (fd >= handlers.size() || !handlers[fd]) {
+        Log::e("Changing handler of unregistered file descriptor: " + inttostr(fd));
+        Log::d("size is " + inttostr(handlers.size()) + ", handlers[fd] is " + (handlers[fd] ? "yes" : "no"));
+        return;
+    }
+
+    e.data.fd = fd;
+    e.events = events;
+
+    if (epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &e) < 0) {
+        Log::e("Failed to modify epoll events " + eetostr(e));
+    }
+}
+
+void proxy_server::remove_handler(int fd) {
+    if (fd >= handlers.size() || !handlers[fd]) {
+        Log::e("Removing handler of a non registered file descriptor");
+        return;
+    }
+
+    handlers[fd] = 0;
+
+    struct epoll_event e;
+    e.data.fd = fd;
+    if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &e) < 0) {
+        Log::d("Failed to modify epoll events");
+    }
 }

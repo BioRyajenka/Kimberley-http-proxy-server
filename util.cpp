@@ -69,4 +69,3 @@ int setnonblocking(int sockfd) {
 
 int Log::level = 0;
 std::vector<std::ostream *> Log::targets;
-
