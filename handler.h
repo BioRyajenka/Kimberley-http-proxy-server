@@ -31,8 +31,16 @@ public:
 private:
 #define BUFFER_SIZE 1024
 
+    const int STATUS_WAITING_FOR_MESSAGE = 0;
+    const int STATUS_WAITING_FOR_URL_RESOLVING = 1;
+
     ssize_t received = 0;
-    char buffer[BUFFER_SIZE];
+    char temp_buffer[BUFFER_SIZE + 1];
+    std::string buffer;
+    int host_token_pos = -1;
+    int status = STATUS_WAITING_FOR_MESSAGE;
+
+
 };
 
 class server_handler : public handler {

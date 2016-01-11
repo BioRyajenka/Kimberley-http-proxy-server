@@ -20,12 +20,18 @@ int strtoint(std::string s) {
 }
 
 std::string inttostr(int n) {
+    char is_negative = false;
+    if (n < 0) {
+        n *= -1;
+        is_negative = true;
+    }
     if (!n) return "0";
     std::string res = "";
     while (n) {
         res += char(n % 10 + 48);
         n /= 10;
     }
+    res += (is_negative ? "-" : "");
     std::reverse(res.begin(), res.end());
     return res;
 }
