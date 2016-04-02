@@ -3,6 +3,7 @@
 //
 
 #include <algorithm>
+#include <assert.h>
 #include "util.h"
 
 int strtoint(std::string s) {
@@ -17,6 +18,10 @@ int strtoint(std::string s) {
         res = res * 10 + s[i] - 48;
     }
     return res * (is_negative ? -1 : 1);
+}
+
+std::string chartostr(char c) {
+    return {c};
 }
 
 std::string inttostr(int n) {
@@ -75,3 +80,57 @@ int setnonblocking(int sockfd) {
 
 int Log::level = 0;
 std::vector<std::ostream *> Log::targets;
+
+bool is_break_char(char c) {
+    return c == '\n' || c == '\r';
+}
+
+//since start till to
+std::string extract_property(std::string &s, int to, std::string name) {
+    Log::d("Extracting property '" + name + "'");
+    int s_pos = -1;
+    int from = (int) name.length() + 1;
+    for (int i = from; i < to; i++) {
+        if (s[i - 1] != ':' || s[i] != ' ') continue;
+        char ok = true;
+        for (int j = 0; j < (int) name.length(); j++) {
+            ok &= s[i - j - 2] == name[name.length() - j - 1];
+        }
+        if (ok) {
+            s_pos = i + 1;
+            break;
+        }
+    }
+
+    if (s_pos == -1) {
+        return ""; // not found
+    }
+
+    int f_pos = -1;
+    for (int i = s_pos; i < to; i++) {
+        if (is_break_char(s[i])) {
+            f_pos = i;
+            break;
+        }
+    }
+    assert(f_pos != -1);
+    std::string res = s.substr((unsigned long long) s_pos, (unsigned long long) f_pos - s_pos);
+    Log::d("...value is " + res);
+    return res;
+}
+
+/*13 10
+13 10
+ or
+10
+13 10*/
+
+//since from - 1 to the end
+int find_double_line_break(std::string &s, int from) {
+    for (int i = std::max(1, from - 1); i < s.length(); i++)
+        if (s[i - 1] == 10 && is_break_char(s[i])) {
+            while (i < s.length() && is_break_char(s[i++]));
+            return i - 1;
+        }
+    return -1;
+}

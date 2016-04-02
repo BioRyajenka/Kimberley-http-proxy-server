@@ -8,11 +8,16 @@
 #include <string>
 #include <vector>
 #include <arpa/inet.h>
+#include <mutex>
+#include <list>
 
 class handler;
 
+class client_handler;
+
 class proxy_server {
 public:
+
     proxy_server(std::string host, uint16_t port);
 
     void prepare();
@@ -27,8 +32,11 @@ public:
 
     void remove_handler(int fd);
 
+    void queue_to_process(client_handler *);
+
     int epfd;//main epoll
 
+    std::mutex to_process_mutex;
 protected:
 #define TARGET_CONNECTIONS 10000
     const int DEFAULT_TIMEOUT = -1;
@@ -38,6 +46,7 @@ protected:
     int listenerSocket;
 
     std::vector<handler *> handlers;
+    std::list<client_handler *> to_process;
 };
 
 #endif //KIMBERLY_PROXY_SERVER_H

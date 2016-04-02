@@ -9,14 +9,17 @@
 #include <fcntl.h>
 #include <vector>
 #include <sys/epoll.h>
+//#include <cstdio>
 
 // Macros - exit in any error (eval < 0) case
-#define CHK(eval) if(eval < 0){perror("eval"); exit(-1);}
+#define CHK(eval) if(eval < 0){perror("CHK1"); exit(-1);}
 
 // Macros - same as above, but save the result(res) of expression(eval)
-#define CHK2(res, eval) if((res = eval) < 0){perror("eval"); exit(-1);}
+#define CHK2(res, eval) if((res = eval) < 0){perror("CHK2"); exit(-1);}
 
 int strtoint(std::string s);
+
+std::string chartostr(char c);
 
 std::string inttostr(int n);
 
@@ -43,9 +46,17 @@ private:
     static void print(std::string prefix, std::string message) {
         std::string result_message = get_time() + " [" + prefix + "]: " + message + "\n";
 
+        fflush(::stdout);
+        fflush(::stderr);
+        std::cerr.flush();
         for (std::ostream *o : targets) {
+            o->flush();
             (*o) << result_message;
+            o->flush();
         }
+        std::cerr.flush();
+        fflush(::stdout);
+        fflush(::stderr);
     }
 
 public:
@@ -72,5 +83,8 @@ public:
         print("W", message);
     }
 };
+
+std::string extract_property(std::string &s, int to, std::string name);
+int find_double_line_break(std::string &s, int from);
 
 #endif //KIMBERLY_UTIL_H

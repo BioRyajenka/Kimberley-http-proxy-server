@@ -19,32 +19,56 @@ public:
     virtual bool handle(epoll_event) = 0;
 };
 
-class echo_handler : public handler {
+class client_handler : public handler {
 public:
-    echo_handler(int sock, proxy_server *serv) {
+    client_handler(int sock, proxy_server *serv) {
         this->fd = sock;
         this->serv = serv;
     }
 
     bool handle(epoll_event);
 
+    void process();
+
 private:
 #define BUFFER_SIZE 1024
-
     const int STATUS_WAITING_FOR_MESSAGE = 0;
-    const int STATUS_WAITING_FOR_URL_RESOLVING = 1;
+    const int STATUS_WAITING_FOR_IP_RESOLVING = 1;
+    const int STATUS_WAITING_FOR_CREATING_REQUEST_HANDLER = 2;
+    const int STATUS_WAITING_FOR_HOST_ANSWER = 3;
+    const int STATUS_WRITING_HOST_ANSWER = 4;
 
-    ssize_t received = 0;
-    char temp_buffer[BUFFER_SIZE + 1];
-    std::string buffer;
-    int host_token_pos = -1;
+    char buffer[BUFFER_SIZE + 1];
+    std::string large_buffer;
+    int bytes_sended;
+
     int status = STATUS_WAITING_FOR_MESSAGE;
+    int _client_request_socket;
 
+    void resolve_host_ip(std::string);
 
+    class client_request_handler : public handler {
+    public:
+        client_request_handler(int sock, proxy_server *serv, client_handler *clh) {
+            this->fd = sock;
+            this->serv = serv;
+            this->clh = clh;
+        }
+
+        bool handle(epoll_event);
+
+    private:
+        const int STATUS_WAITING_FOR_EPOLLOUT = 0;
+        const int STATUS_WAITING_FOR_ANSWER = 1;
+        int status = STATUS_WAITING_FOR_EPOLLOUT;
+        client_handler *clh;
+        int response_len;
+    };
 };
 
 class server_handler : public handler {
 public:
+    //TODO: inherit constructors
     server_handler(int sock, proxy_server *serv) {
         this->fd = sock;
         this->serv = serv;

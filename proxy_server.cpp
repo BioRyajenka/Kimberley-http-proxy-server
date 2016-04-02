@@ -5,7 +5,6 @@
 #include "proxy_server.h"
 #include "util.h"
 
-#include <sys/socket.h>
 #include <unistd.h>
 #include "handler.h"
 
@@ -61,6 +60,11 @@ void proxy_server::loop() {
             handlers[events[i].data.fd]->handle(events[i]);
         }
 
+        for (auto &h : to_process) {
+            h->process();
+        }
+        to_process.clear();
+
         printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
                (double) (clock() - tStart) / CLOCKS_PER_SEC);
         std::cout.flush();
@@ -75,12 +79,13 @@ void proxy_server::terminate() {
 }
 
 void proxy_server::add_handler(int fd, handler *h, uint events) {
-    Log::d("Trying to insert handler to fd " + inttostr(fd));
+    //Log::d("Trying to insert handler to fd " + inttostr(fd));
     if (handlers.size() <= fd) {
-        handlers.resize(fd + 1);
+        handlers.resize((size_t) fd + 1);
     }
     handlers[fd] = h;
-    Log::d("And now handlers[" + inttostr(fd) + "] = " + (handlers[fd] ? "yes" : "no") + ", handlers.size() " + inttostr(handlers.size()));
+    //Log::d("And now handlers[" + inttostr(fd) + "] = " + (handlers[fd] ? "yes" : "no") + ", handlers.size() " +
+    //       inttostr(handlers.size()));
     epoll_event e;
     e.data.fd = fd;
     e.events = events;
@@ -90,7 +95,7 @@ void proxy_server::add_handler(int fd, handler *h, uint events) {
         perror(("add_handler (fd=" + inttostr(fd) + ")").c_str());
         std::cerr.flush();
     } else {
-        Log::d("success");
+        Log::d("Handler was inserted to fd " + inttostr(fd));
     }
 }
 
@@ -124,4 +129,8 @@ void proxy_server::remove_handler(int fd) {
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &e) < 0) {
         Log::d("Failed to modify epoll events");
     }
+}
+
+void proxy_server::queue_to_process(client_handler *h) {
+    to_process.push_back(h);
 }
