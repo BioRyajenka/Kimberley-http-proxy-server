@@ -85,6 +85,7 @@ public:
 };
 
 std::string extract_property(std::string &s, int to, std::string name);
+
 int find_double_line_break(std::string &s, int from);
 
 #endif //KIMBERLY_UTIL_H

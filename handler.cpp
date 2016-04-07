@@ -30,25 +30,30 @@ bool server_handler::handle(epoll_event) {
 bool client_handler::handle(epoll_event e) {
     Log::d("Client handler: " + eetostr(e));
     if (e.events & EPOLLHUP) {
+        Log::e("EPOLLHUP");
         serv->remove_handler(fd);
         return false;
     }
 
     if (e.events & EPOLLERR) {
+        Log::e("EPOLLERR");
         return false;
     }
 
     if (e.events & EPOLLOUT) {
         assert(status == STATUS_WRITING_HOST_ANSWER);
-        size_t to_send = (size_t) std::min((int) large_buffer.length() - bytes_sended, BUFFER_SIZE);
+        size_t to_send = std::min(large_buffer.length() - bytes_sended, (size_t) BUFFER_SIZE);
         if (send(fd, large_buffer.c_str() + bytes_sended, to_send, 0) != to_send) {
             Log::e("Error writing to socket");
         }
         bytes_sended += to_send;
         if (bytes_sended == large_buffer.length()) {
+            Log::d("Finished resending host response to clients");
+            std::string().swap(large_buffer);//clearing
             serv->modify_handler(fd, EPOLLIN);
             status = STATUS_WAITING_FOR_MESSAGE;
         }
+        return true;
     }
 
     if (e.events & EPOLLIN) {
@@ -59,10 +64,9 @@ bool client_handler::handle(epoll_event e) {
             serv->remove_handler(fd);
             return false;
         }
-        buffer[received] = 0;
         Log::d("Status: " + inttostr(status) + ", received: \n\"" + std::string(buffer) + "\"");
         int plen = (int) large_buffer.length();
-        large_buffer += buffer;
+        large_buffer += std::string(buffer, received);
         if (find_double_line_break(large_buffer, plen) != -1) {
             assert(status == STATUS_WAITING_FOR_MESSAGE);
 
@@ -72,9 +76,10 @@ bool client_handler::handle(epoll_event e) {
             //TODO: new process
             resolve_host_ip(extract_property(large_buffer, (int) large_buffer.length(), "Host"));
         }
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 void client_handler::resolve_host_ip(std::string hostname) {
@@ -91,8 +96,13 @@ void client_handler::resolve_host_ip(std::string hostname) {
 
     Log::d("hostname is " + hostname + ", port is " + inttostr(port));
 
+//    if (hostname != "www.kgeorgiy.info") {
+//        return;
+//    }
+
     struct hostent *he;
     he = gethostbyname(hostname.c_str());
+
     //TODO: do smth in case of absence of network
     //for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
     //    Log::d(std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
@@ -127,28 +137,39 @@ void client_handler::process() {
 bool client_handler::client_request_handler::handle(epoll_event e) {
     if (e.events & EPOLLHUP) {
         Log::e("Very difficult situation1");
+        serv->remove_handler(fd);
+        serv->remove_handler(clh->fd);
+        return false;
     }
 
     if (e.events & EPOLLERR) {
         Log::e("Very difficult situation2");
+        serv->remove_handler(fd);
+        serv->remove_handler(clh->fd);
+        return false;
     }
 
     if (e.events & EPOLLOUT) {
         Log::d("client_request_handler:EPOLLOUT");
         assert(status == STATUS_WAITING_FOR_EPOLLOUT);
 
-        size_t to_send = (size_t) std::min((int) clh->large_buffer.length() - clh->bytes_sended, BUFFER_SIZE);
+        size_t to_send = std::min(clh->large_buffer.length() - clh->bytes_sended, (size_t) BUFFER_SIZE);
         if (send(fd, clh->large_buffer.c_str() + clh->bytes_sended, to_send, 0) != to_send) {
             Log::e("Error writing to socket");
+            serv->remove_handler(fd);
+            serv->remove_handler(clh->fd);
+            return false;
         }
         clh->bytes_sended += to_send;
         if (clh->bytes_sended == clh->large_buffer.length()) {
             Log::d("Finished resending query to host");
             status = STATUS_WAITING_FOR_ANSWER;
             serv->modify_handler(fd, EPOLLIN);
+
             std::string().swap(clh->large_buffer);//clearing
             response_len = -1;
         }
+        return true;
     }
 
     if (e.events & EPOLLIN) {
@@ -156,42 +177,50 @@ bool client_handler::client_request_handler::handle(epoll_event e) {
         assert(status == STATUS_WAITING_FOR_ANSWER);
         int plen = (int) clh->large_buffer.length();
         ssize_t received;
-        CHK2(received, recv(fd, clh->buffer, BUFFER_SIZE, 0));
-        if (received == 0) {
+        if ((received = recv(fd, clh->buffer, BUFFER_SIZE, 0)) == 0) {
             //TODO: to do what??
-            Log::e("Very difficult situation3");
+            Log::e("Very difficult situation3: \n\"" + clh->large_buffer + "\"");
+            serv->remove_handler(fd);
+            serv->remove_handler(clh->fd);
+            return false;
             clh->large_buffer = "Very difficult situation3";
             serv->remove_handler(fd);
             serv->modify_handler(clh->fd, EPOLLOUT);
             clh->status = clh->STATUS_WRITING_HOST_ANSWER;
             clh->bytes_sended = 0;
         }
-        clh->buffer[received] = 0;
-        clh->large_buffer += clh->buffer;
+        int iteration = 0;
+        do {
+            if (received < 0) {
+                perror("recv in client_request_handler");
+                exit(-1);
+            }
+            clh->large_buffer += std::string(clh->buffer, received);
+            Log::d("received (" + inttostr(received) + ", " + inttostr(iteration++) + ", " + inttostr(response_len) +
+                   ", " + inttostr(clh->large_buffer.length()) + "): \n\"" + clh->buffer + "\"");
+        } while (received = recv(fd, clh->buffer, BUFFER_SIZE, 0));
 
         if (response_len == -1) {
-            Log::d("plen is " + inttostr(plen));
             int lb = find_double_line_break(clh->large_buffer, plen);
             if (lb != -1) {
-                Log::d("l_buffer is \n\"" + clh->large_buffer + "\"");
-                Log::d("lb is \"" + inttostr(lb) + "\"");
-                Log::d("fuck1 is \"" + inttostr((int)(clh->large_buffer[lb - 1])) + "\"");
-                Log::d("fuck2 is \"" + inttostr((int)(clh->large_buffer[lb])) + "\"");
                 std::string content_length_str = extract_property(clh->large_buffer, lb, "Content-Length");
                 int len = 0;
                 if (content_length_str != "") {
                     len = strtoint(content_length_str);
                 }
-                Log::d("len is " + inttostr(len));
-                response_len = len + lb + 1;
+                response_len = len + lb;
+                Log::d("New response len is " + inttostr(response_len));
             }
         }
 
         if (response_len != -1 && response_len == clh->large_buffer.length()) {
+            Log::d("It seems that all message received.");
             serv->remove_handler(fd);
             serv->modify_handler(clh->fd, EPOLLOUT);
             clh->status = clh->STATUS_WRITING_HOST_ANSWER;
             clh->bytes_sended = 0;
         }
+        return true;
     }
+    return false;
 }

@@ -7,7 +7,7 @@ int main() {
     Log::add_output(&(std::cout));
     Log::set_level(2);
 
-    proxy_server s("127.0.0.1", 4502);
+    proxy_server s("127.0.0.1", 4501);
     s.prepare();
     s.loop();
     s.terminate();
