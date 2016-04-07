@@ -84,7 +84,7 @@ public:
     }
 };
 
-std::string extract_property(std::string &s, int to, std::string name);
+bool extract_property(std::string &s, int to, std::string name, std::string &result);
 
 int find_double_line_break(std::string &s, int from);
 

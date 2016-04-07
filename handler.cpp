@@ -175,51 +175,58 @@ bool client_handler::client_request_handler::handle(epoll_event e) {
     if (e.events & EPOLLIN) {
         Log::d("client_request_handler:EPOLLIN");
         assert(status == STATUS_WAITING_FOR_ANSWER);
-        int plen = (int) clh->large_buffer.length();
         ssize_t received;
         if ((received = recv(fd, clh->buffer, BUFFER_SIZE, 0)) == 0) {
-            //TODO: to do what??
             Log::e("Very difficult situation3: \n\"" + clh->large_buffer + "\"");
-            serv->remove_handler(fd);
-            serv->remove_handler(clh->fd);
-            return false;
-            clh->large_buffer = "Very difficult situation3";
-            serv->remove_handler(fd);
-            serv->modify_handler(clh->fd, EPOLLOUT);
-            clh->status = clh->STATUS_WRITING_HOST_ANSWER;
-            clh->bytes_sended = 0;
+            assert(false);
         }
         int iteration = 0;
         do {
             if (received < 0) {
                 perror("recv in client_request_handler");
-                exit(-1);
+                assert(false);
             }
+            int plen = (int) clh->large_buffer.length();
+
             clh->large_buffer += std::string(clh->buffer, received);
             Log::d("received (" + inttostr(received) + ", " + inttostr(iteration++) + ", " + inttostr(response_len) +
                    ", " + inttostr(clh->large_buffer.length()) + "): \n\"" + clh->buffer + "\"");
-        } while (received = recv(fd, clh->buffer, BUFFER_SIZE, 0));
 
-        if (response_len == -1) {
-            int lb = find_double_line_break(clh->large_buffer, plen);
-            if (lb != -1) {
-                std::string content_length_str = extract_property(clh->large_buffer, lb, "Content-Length");
-                int len = 0;
-                if (content_length_str != "") {
-                    len = strtoint(content_length_str);
+            if (response_len == -1) {
+                int lb = find_double_line_break(clh->large_buffer, plen);
+                if (lb != -1) {
+                    std::string content_length_str;
+                    bool property_exists = extract_property(clh->large_buffer, lb, "Content-Length", content_length_str);
+                    int len;
+                    if (property_exists) {
+                        len = strtoint(content_length_str);
+                    } else {
+                        property_exists = extract_property(clh->large_buffer, lb, "Transfer-Encoding", content_length_str);
+                        if (property_exists) {
+                            if (content_length_str == "chunked") {
+                                
+                            } else {
+                                // other encoding methods are don't taken into account
+                                len = 1;
+                            }
+                        } else {
+                            len = 1;
+                        }
+                    }
+                    response_len = len + lb;
+                    Log::d("New response len is " + inttostr(response_len));
                 }
-                response_len = len + lb;
-                Log::d("New response len is " + inttostr(response_len));
             }
-        }
 
-        if (response_len != -1 && response_len == clh->large_buffer.length()) {
-            Log::d("It seems that all message received.");
-            serv->remove_handler(fd);
-            serv->modify_handler(clh->fd, EPOLLOUT);
-            clh->status = clh->STATUS_WRITING_HOST_ANSWER;
-            clh->bytes_sended = 0;
-        }
+            if (response_len != -1 && response_len == clh->large_buffer.length()) {
+                Log::d("It seems that all message received.");
+                serv->remove_handler(fd);
+                serv->modify_handler(clh->fd, EPOLLOUT);
+                clh->status = clh->STATUS_WRITING_HOST_ANSWER;
+                clh->bytes_sended = 0;
+                return true;
+            }
+        } while (received = recv(fd, clh->buffer, BUFFER_SIZE, 0));
         return true;
     }
     return false;

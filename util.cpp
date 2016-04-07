@@ -86,7 +86,7 @@ bool is_break_char(char c) {
 }
 
 //since start till to
-std::string extract_property(std::string &s, int to, std::string name) {
+bool extract_property(std::string &s, int to, std::string name, std::string &result) {
     Log::d("Extracting property '" + name + "'");
     int s_pos = -1;
     int from = (int) name.length() + 1;
@@ -103,7 +103,8 @@ std::string extract_property(std::string &s, int to, std::string name) {
     }
 
     if (s_pos == -1) {
-        return ""; // not found
+        Log::d("...property was not found");
+        return false; // not found
     }
 
     int f_pos = -1;
@@ -114,9 +115,9 @@ std::string extract_property(std::string &s, int to, std::string name) {
         }
     }
     assert(f_pos != -1);
-    std::string res = s.substr((unsigned long long) s_pos, (unsigned long long) f_pos - s_pos);
-    Log::d("...value is " + res);
-    return res;
+    result = s.substr((unsigned long long) s_pos, (unsigned long long) f_pos - s_pos);
+    Log::d("...value is " + result);
+    return true;
 }
 
 /*13 10
