@@ -1,31 +1,30 @@
 #include "proxy_server.h"
 #include <iostream>
 #include <netdb.h>
+#include <signal.h>
+#include <string.h>
 #include "util.h"
+
+void signalHandler(int signum) {
+    Log::d("hello :)");
+    exit(signum);
+}
 
 int main() {
     Log::add_output(&(std::cout));
     Log::set_level(2);
 
-    proxy_server s("127.0.0.1", 4506);
-    s.prepare();
-    s.loop();
-    s.terminate();
+    struct sigaction action;
+    memset(&action, 0, sizeof(struct sigaction));
+    action.sa_handler = signalHandler;
+    sigaction(SIGQUIT, &action, NULL);
 
-    /*std::string s = "HTTP/1.1 302 Found\n"
-            "Server: Apache\n"
-            "Date: Sat, 02 Apr 2016 15:20:24 GMT\n"
-            "Content-Type: text/html; charset=windows-1251\n"
-            "Content-Length: 20\n"
-            "Connection: keep-alive\n"
-            "X-Powered-By: PHP/3.22697\n"
-            "Location: /feed\n"
-            "Content-Encoding: gzip\n"
-            "\n"
-            "\u001F�\b";
-    std::cout << find_double_line_break(s, 0);*/
-
-    /*struct hostent *he;
-    he = gethostbyname("agar.io");
-    puts(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));*/
+    proxy_server s("127.0.0.1", 4500);
+    try {
+        s.prepare();
+        s.loop();
+    } catch (const std::exception &e) {
+        s.terminate();
+        Log::e("Exception " + std::string(e.what()));
+    }
 }

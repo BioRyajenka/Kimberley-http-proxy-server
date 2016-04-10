@@ -34,8 +34,6 @@ public:
 
     void queue_to_process(client_handler *);
 
-    int epfd;//main epoll
-
     std::mutex to_process_mutex;
 protected:
 #define TARGET_CONNECTIONS 10000
@@ -44,6 +42,8 @@ protected:
     uint16_t port;
     in_addr_t host;
     int listenerSocket;
+
+    int epfd;//main epoll
 
     std::vector<handler *> handlers;
     std::list<client_handler *> to_process;

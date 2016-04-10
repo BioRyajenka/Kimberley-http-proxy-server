@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <vector>
 #include <sys/epoll.h>
+#include <stdexcept>
 //#include <cstdio>
 
 // Macros - exit in any error (eval < 0) case
@@ -83,6 +84,11 @@ public:
     static void w(std::string message) {
         if (level < 2) return;
         print("W", message);
+    }
+
+    static void fatal(std::string message) {
+        e(message);
+        throw std::runtime_error(message);
     }
 };
 

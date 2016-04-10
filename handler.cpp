@@ -14,8 +14,8 @@ bool server_handler::handle(epoll_event) {
     int client = accept(fd, (struct sockaddr *) &client_addr, &ca_len);
 
     if (client < 0) {
-        Log::e("Error accepting connection");
-        return false;
+        Log::fatal("Error accepting connection");
+        //return false;
     }
 
     static struct epoll_event ev;
@@ -30,8 +30,8 @@ bool server_handler::handle(epoll_event) {
 bool client_handler::write_chunk(const handler &h) {
     size_t to_send = std::min(large_buffer.length() - bytes_sended, (size_t) BUFFER_SIZE);
     if (send(h.fd, large_buffer.c_str() + bytes_sended, to_send, 0) != to_send) {
-        Log::e("Error writing to socket");
-        exit(-1);
+        Log::fatal("Error writing to socket");
+        //exit(-1);
     }
     bytes_sended += to_send;
     return bytes_sended == large_buffer.length();
@@ -41,7 +41,8 @@ bool client_handler::read_chunk(const handler &h) {
     ssize_t received;
     if ((received = recv(h.fd, buffer, BUFFER_SIZE, 0)) < 0) {
         perror("read_chunk");
-        exit(-1);
+        Log::fatal("fatal in read_chunk");
+        //exit(-1);
     }
     large_buffer += std::string(buffer, received);
     buffer[received] = 0;
@@ -52,7 +53,7 @@ bool client_handler::read_message(const handler &h) {
     int plen = (int) large_buffer.length();
 
     if (read_chunk(h)) {
-        Log::e("Very difficult situation. Disconnecting");
+        Log::w("Very difficult situation. Disconnecting");
         h.disconnect();
         return false;
     }
@@ -102,54 +103,35 @@ bool client_handler::read_message(const handler &h) {
 
 bool client_handler::handle(epoll_event e) {
     Log::d("Client handler: " + eetostr(e));
-    if (e.events & EPOLLHUP) {
-        Log::e("EPOLLHUP");
-        exit(-1);
-    }
-
-    if (e.events & EPOLLERR) {
-        Log::e("EPOLLERR");
-        exit(-1);
-    }
-
     if (e.events & EPOLLOUT) {
-        assert(status == STATUS_WRITING_HOST_ANSWER);
         if (write_chunk(*this)) {
             Log::d("Finished resending host response to client");
             std::string().swap(large_buffer);//clearing
             message_len = -1;
             message_type = NOT_EVALUATED;
             serv->modify_handler(fd, EPOLLIN);
-            status = STATUS_WAITING_FOR_MESSAGE;
         }
         return true;
     }
 
     if (e.events & EPOLLIN) {
-        assert(status == STATUS_WAITING_FOR_MESSAGE);
         if (read_message(*this)) {
-            assert(status == STATUS_WAITING_FOR_MESSAGE);
-
             if (message_type == WITHOUT_BODY && large_buffer.substr(0, large_buffer.find(' ')) == "CONNECT") {
-                //Log::d("CONNECT method detected. Disconnecting");
-                //disconnect();
-                large_buffer = "HTTP/1.1 400 Bad Request\r\n\r\n";
+                large_buffer = "HTTP/1.0 200 Connection established\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n";
                 bytes_sended = 0;
                 serv->modify_handler(fd, EPOLLOUT);
-                status = STATUS_WRITING_HOST_ANSWER;
                 return true;
             }
 
             serv->modify_handler(fd, 0);
-            status = STATUS_WAITING_FOR_IP_RESOLVING;
 
             //TODO: new process
             std::string hostname;
             if (extract_property(large_buffer, (int) large_buffer.length(), "Host", hostname)) {
                 resolve_host_ip(hostname);
             } else {
-                Log::e("Client headers do not contain 'host' header");
-                exit(-1);
+                Log::fatal("Client headers do not contain 'host' header");
+                //exit(-1);
             }
         }
         return true;
@@ -173,12 +155,18 @@ void client_handler::resolve_host_ip(std::string hostname) {
     Log::d("hostname is " + hostname + ", port is " + inttostr(port));
 
     struct hostent *he;
-    he = gethostbyname(hostname.c_str());
 
-    //TODO: do smth in case of absence of network
-    //for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
-    //    Log::d(std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
-    //}
+    if ((he = gethostbyname(hostname.c_str())) == 0) {
+        Log::d("hostname " + hostname + " cannot be resolved");
+        large_buffer = "HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>";
+        bytes_sended = 0;
+        serv->modify_handler(fd, EPOLLOUT);
+        return;
+    }
+
+    /*for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
+        Log::d("ips[i] = " + inttostr(i) + ", " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
+    }*/
 
     Log::d("Ip is " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
 
@@ -197,36 +185,22 @@ void client_handler::resolve_host_ip(std::string hostname) {
     serv->to_process_mutex.lock();
     serv->queue_to_process(this);
     serv->to_process_mutex.unlock();
-
-    status = STATUS_WAITING_FOR_CREATING_REQUEST_HANDLER;
 }
 
 void client_handler::process() {
     Log::d("process()");
     bytes_sended = 0;
-    status = STATUS_WAITING_FOR_HOST_ANSWER;
+    Log::d("Creating client_request socket fd(" + inttostr(_client_request_socket) + ") for client fd(" + inttostr(fd) +
+           ")");
     serv->add_handler(_client_request_socket,
                       new client_handler::client_request_handler(_client_request_socket, serv, this), EPOLLOUT);
 }
 
 bool client_handler::client_request_handler::handle(epoll_event e) {
     Log::d("Client request handler: " + eetostr(e));
-    if (e.events & EPOLLHUP) {
-        Log::e("EPOLLHUP");
-        exit(-1);
-    }
-
-    if (e.events & EPOLLERR) {
-        Log::e("EPOLLERR");
-        exit(-1);
-    }
-
     if (e.events & EPOLLOUT) {
-        assert(status == STATUS_WAITING_FOR_EPOLLOUT);
-
         if (clh->write_chunk(*this)) {
             Log::d("Finished resending query to host");
-            status = STATUS_WAITING_FOR_ANSWER;
             serv->modify_handler(fd, EPOLLIN);
 
             std::string().swap(clh->large_buffer);//clearing
@@ -237,13 +211,10 @@ bool client_handler::client_request_handler::handle(epoll_event e) {
     }
 
     if (e.events & EPOLLIN) {
-        assert(status == STATUS_WAITING_FOR_ANSWER);
-
         if (clh->read_message(*this)) {
             Log::d("It seems that all message was received.");
             serv->remove_handler(fd);
             serv->modify_handler(clh->fd, EPOLLOUT);
-            clh->status = clh->STATUS_WRITING_HOST_ANSWER;
             clh->bytes_sended = 0;
             return true;
         }

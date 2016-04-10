@@ -38,20 +38,13 @@ public:
 
 private:
 #define BUFFER_SIZE 1024
-    const int STATUS_WAITING_FOR_MESSAGE = 0;
-    const int STATUS_WAITING_FOR_IP_RESOLVING = 1;
-    const int STATUS_WAITING_FOR_CREATING_REQUEST_HANDLER = 2;
-    const int STATUS_WAITING_FOR_HOST_ANSWER = 3;
-    const int STATUS_WRITING_HOST_ANSWER = 4;
-
     char buffer[BUFFER_SIZE + 1];
     std::string large_buffer;
     int bytes_sended;
     int message_len;
 
-    enum {NOT_EVALUATED, WITHOUT_BODY, VIA_CONTENT_LENGTH, VIA_TRANSFER_ENCODING} message_type;
+    enum {NOT_EVALUATED, WITHOUT_BODY, VIA_CONTENT_LENGTH, VIA_TRANSFER_ENCODING, HTTPS_MODE} message_type;
 
-    int status = STATUS_WAITING_FOR_MESSAGE;
     int _client_request_socket;
 
     // returns true if large_buffer was totally sended to fd
@@ -79,9 +72,6 @@ private:
         }
 
     private:
-        const int STATUS_WAITING_FOR_EPOLLOUT = 0;
-        const int STATUS_WAITING_FOR_ANSWER = 1;
-        int status = STATUS_WAITING_FOR_EPOLLOUT;
         client_handler *clh;
     };
 };
