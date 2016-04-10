@@ -17,15 +17,17 @@
 // Macros - same as above, but save the result(res) of expression(eval)
 #define CHK2(res, eval) if((res = eval) < 0){perror("CHK2"); exit(-1);}
 
-int strtoint(std::string s);
+int strtoint(std::string);
 
-std::string chartostr(char c);
+std::string chartostr(const char&);
 
-std::string inttostr(int n);
+std::string inttostr(int);
 
-std::string eetostr(epoll_event ev);
+int hextoint(const std::string&);
 
-int setnonblocking(int sockfd);
+std::string eetostr(const epoll_event&);
+
+int setnonblocking(const int& sockfd);
 
 class Log {
 private:
@@ -86,6 +88,6 @@ public:
 
 bool extract_property(std::string &s, int to, std::string name, std::string &result);
 
-int find_double_line_break(std::string &s, int from);
+int find_double_line_break(const std::string &s, int from);
 
 #endif //KIMBERLY_UTIL_H

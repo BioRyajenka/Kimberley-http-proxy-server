@@ -20,7 +20,7 @@ int strtoint(std::string s) {
     return res * (is_negative ? -1 : 1);
 }
 
-std::string chartostr(char c) {
+std::string chartostr(const char &c) {
     return {c};
 }
 
@@ -41,7 +41,12 @@ std::string inttostr(int n) {
     return res;
 }
 
-std::string eetostr(epoll_event ev) {
+int hextoint(const std::string &s) {
+    Log::d("hex " + s + " to string " + inttostr(std::stoul("0x" + s, nullptr, 16)));
+    return std::stoul("0x" + s, nullptr, 16);
+}
+
+std::string eetostr(const epoll_event &ev) {
     std::string result = "fd(" + inttostr(ev.data.fd) + "), ev.events:";
     if (ev.events & EPOLLIN)
         result += " EPOLLIN ";
@@ -72,7 +77,7 @@ std::string eetostr(epoll_event ev) {
 
 }
 
-int setnonblocking(int sockfd) {
+int setnonblocking(const int &sockfd) {
     Log::d("Making " + inttostr(sockfd) + " non-blocking");
     CHK(fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFD, 0) | O_NONBLOCK));
     return 0;
@@ -87,7 +92,7 @@ bool is_break_char(char c) {
 
 //since start till to
 bool extract_property(std::string &s, int to, std::string name, std::string &result) {
-    Log::d("Extracting property '" + name + "'");
+    //Log::d("Extracting property '" + name + "'");
     int s_pos = -1;
     int from = (int) name.length() + 1;
     for (int i = from; i < to; i++) {
@@ -103,7 +108,7 @@ bool extract_property(std::string &s, int to, std::string name, std::string &res
     }
 
     if (s_pos == -1) {
-        Log::d("...property was not found");
+        //Log::d("...property was not found");
         return false; // not found
     }
 
@@ -126,12 +131,7 @@ bool extract_property(std::string &s, int to, std::string name, std::string &res
 10
 13 10*/
 
-//since from - 1 to the end
-int find_double_line_break(std::string &s, int from) {
-    for (int i = std::max(1, from - 1); i < s.length(); i++)
-        if (s[i - 1] == 10 && is_break_char(s[i])) {
-            while (i < s.length() && is_break_char(s[i++]));
-            return i - 1;
-        }
-    return -1;
+//returns position next to \r\n. (e.g. 2 for string \r\na and 3 for string a\r\n)
+int find_double_line_break(const std::string &s, int from) {
+    return s.find("\r\n\r\n", from) + 4;
 }
