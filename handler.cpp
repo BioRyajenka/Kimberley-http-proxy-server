@@ -27,86 +27,64 @@ bool server_handler::handle(epoll_event) {
     return true;
 }
 
-bool client_handler::write_chunk(const handler &h) {
-    size_t to_send = std::min(large_buffer.length() - bytes_sended, (size_t) BUFFER_SIZE);
-    if (send(h.fd, large_buffer.c_str() + bytes_sended, to_send, 0) != to_send) {
-        Log::fatal("Error writing to socket");
-        //exit(-1);
-    }
-    bytes_sended += to_send;
-    return bytes_sended == large_buffer.length();
-}
+bool client_handler::read_message(const handler &h, buffer &buf) {
+    int plen = buf.length();
 
-bool client_handler::read_chunk(const handler &h) {
-    ssize_t received;
-    if ((received = recv(h.fd, buffer, BUFFER_SIZE, 0)) < 0) {
-        perror("read_chunk");
-        Log::fatal("fatal in read_chunk");
-        //exit(-1);
-    }
-    large_buffer += std::string(buffer, received);
-    buffer[received] = 0;
-    return received == 0;
-}
-
-bool client_handler::read_message(const handler &h) {
-    int plen = (int) large_buffer.length();
-
-    if (read_chunk(h)) {
+    if (serv->read_chunk(h, buf)) {
         Log::w("Very difficult situation. Disconnecting");
-        h.disconnect();
+        disconnect();
         return false;
     }
     if (message_type == NOT_EVALUATED) {
         // recalc message len
-        int lb = find_double_line_break(large_buffer, plen);
+        int lb = find_double_line_break(buf.string_data(), plen);
         if (lb != -1) {
             std::string content_length_str;
             int len;
-            if (extract_property(large_buffer, lb, "Content-Length", content_length_str)) {
+            if (extract_header(buf.string_data(), lb, "Content-Length", content_length_str)) {
                 len = strtoint(content_length_str);
                 message_type = VIA_CONTENT_LENGTH;
             } else {
                 len = 0;
-                message_type = extract_property(large_buffer, lb, "Transfer-Encoding", content_length_str)
+                message_type = extract_header(buf.string_data(), lb, "Transfer-Encoding", content_length_str)
                                ? VIA_TRANSFER_ENCODING : WITHOUT_BODY;
             }
             message_len = len + lb;
         }
     }
 
-    Log::d("read_message (" + inttostr(large_buffer.length()) + ", " + inttostr(message_len) + "): \n\"" +
-           buffer + "\"");
-
     if (message_type == NOT_EVALUATED) {
         return false;
     }
     if (message_type == VIA_TRANSFER_ENCODING) {
-        if (large_buffer.length() > message_len) {
-            Log::d("kek is  " + inttostr((int) large_buffer[message_len - 1]) + " " +
-                   inttostr((int) large_buffer[message_len]) + " " + inttostr((int) large_buffer[message_len + 1]));
-            if (large_buffer[message_len] == '0') {
+        if (buf.length() > message_len) {
+            Log::d("kek is  " + inttostr((int) buf.string_data()[message_len - 1]) + " " +
+                   inttostr((int) buf.string_data()[message_len]) + " " + inttostr((int) buf.string_data()[message_len + 1]));
+            if (buf.string_data()[message_len] == '0') {
                 return true;
             }
-            size_t linebreak = large_buffer.find("\r\n", message_len);
+            size_t linebreak = buf.string_data().find("\r\n", message_len);
             if (linebreak != std::string::npos) {
-                std::string chunklen = large_buffer.substr(message_len, linebreak - message_len);
+                std::string chunklen = buf.string_data().substr(message_len, linebreak - message_len);
                 Log::d("Next chunk len is " + chunklen);
                 message_len = message_len + chunklen.length() + hextoint(chunklen) + 4;
             }
             return false;
         }
     } else {
-        return large_buffer.length() == message_len;
+        return buf.length() == message_len;
     }
 }
 
 bool client_handler::handle(epoll_event e) {
     Log::d("Client handler: " + eetostr(e));
     if (e.events & EPOLLOUT) {
-        if (write_chunk(*this)) {
+        /*if (message_type == HTTPS_MODE) {
+            return true;
+        }*/
+        if (serv->write_chunk(*this, output_buffer)) {
             Log::d("Finished resending host response to client");
-            std::string().swap(large_buffer);//clearing
+            input_buffer.clear();
             message_len = -1;
             message_type = NOT_EVALUATED;
             serv->modify_handler(fd, EPOLLIN);
@@ -115,11 +93,11 @@ bool client_handler::handle(epoll_event e) {
     }
 
     if (e.events & EPOLLIN) {
-        if (read_message(*this)) {
-            if (message_type == WITHOUT_BODY && large_buffer.substr(0, large_buffer.find(' ')) == "CONNECT") {
-                large_buffer = "HTTP/1.0 200 Connection established\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n";
-                bytes_sended = 0;
+        if (read_message(*this, input_buffer)) {
+            if (message_type == WITHOUT_BODY && extract_method(input_buffer.string_data()) == "CONNECT") {
+                output_buffer.set("HTTP/1.0 404 Fail\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
                 serv->modify_handler(fd, EPOLLOUT);
+                message_type = HTTPS_MODE;
                 return true;
             }
 
@@ -127,9 +105,23 @@ bool client_handler::handle(epoll_event e) {
 
             //TODO: new process
             std::string hostname;
-            if (extract_property(large_buffer, (int) large_buffer.length(), "Host", hostname)) {
+            if (extract_header(input_buffer.string_data(), input_buffer.length(), "Host", hostname)) {
+
+                if (message_type == WITHOUT_BODY && extract_method(input_buffer.string_data()) == "GET") {
+                    // modifying status line
+                    std::string data = input_buffer.string_data();
+                    size_t from = data.find(/*"http://" + */hostname) + hostname.length();// + std::string("http://").length();
+
+                    data = "GET " + input_buffer.string_data().substr(from, input_buffer.string_data().length() - from);
+                    input_buffer.clear();
+                    input_buffer.put(data.c_str(), data.length());
+
+                    //Log::d("new query is \"" + input_buffer.string_data() + "\"");
+                }
+
                 resolve_host_ip(hostname);
             } else {
+                //TODO: send correspond answer
                 Log::fatal("Client headers do not contain 'host' header");
                 //exit(-1);
             }
@@ -158,8 +150,7 @@ void client_handler::resolve_host_ip(std::string hostname) {
 
     if ((he = gethostbyname(hostname.c_str())) == 0) {
         Log::d("hostname " + hostname + " cannot be resolved");
-        large_buffer = "HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>";
-        bytes_sended = 0;
+        output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
         serv->modify_handler(fd, EPOLLOUT);
         return;
     }
@@ -188,8 +179,6 @@ void client_handler::resolve_host_ip(std::string hostname) {
 }
 
 void client_handler::process() {
-    Log::d("process()");
-    bytes_sended = 0;
     Log::d("Creating client_request socket fd(" + inttostr(_client_request_socket) + ") for client fd(" + inttostr(fd) +
            ")");
     serv->add_handler(_client_request_socket,
@@ -199,11 +188,11 @@ void client_handler::process() {
 bool client_handler::client_request_handler::handle(epoll_event e) {
     Log::d("Client request handler: " + eetostr(e));
     if (e.events & EPOLLOUT) {
-        if (clh->write_chunk(*this)) {
+        if (serv->write_chunk(*this, clh->input_buffer)) {
             Log::d("Finished resending query to host");
             serv->modify_handler(fd, EPOLLIN);
+            clh->output_buffer.clear();
 
-            std::string().swap(clh->large_buffer);//clearing
             clh->message_len = -1;
             clh->message_type = NOT_EVALUATED;
         }
@@ -211,11 +200,10 @@ bool client_handler::client_request_handler::handle(epoll_event e) {
     }
 
     if (e.events & EPOLLIN) {
-        if (clh->read_message(*this)) {
+        if (clh->read_message(*this, clh->output_buffer)) {
             Log::d("It seems that all message was received.");
-            serv->remove_handler(fd);
+            disconnect(); // only me
             serv->modify_handler(clh->fd, EPOLLOUT);
-            clh->bytes_sended = 0;
             return true;
         }
         return true;

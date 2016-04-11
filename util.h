@@ -10,6 +10,7 @@
 #include <vector>
 #include <sys/epoll.h>
 #include <stdexcept>
+#include "handler.h"
 //#include <cstdio>
 
 // Macros - exit in any error (eval < 0) case
@@ -20,15 +21,15 @@
 
 int strtoint(std::string);
 
-std::string chartostr(const char&);
+std::string chartostr(const char &);
 
 std::string inttostr(int);
 
-int hextoint(const std::string&);
+int hextoint(const std::string &);
 
-std::string eetostr(const epoll_event&);
+std::string eetostr(const epoll_event &);
 
-int setnonblocking(const int& sockfd);
+int setnonblocking(const int &sockfd);
 
 class Log {
 private:
@@ -92,8 +93,12 @@ public:
     }
 };
 
-bool extract_property(std::string &s, int to, std::string name, std::string &result);
+bool extract_header(const std::string &s, int to, std::string name, std::string &result);
 
 int find_double_line_break(const std::string &s, int from);
+
+std::string extract_method(const std::string &s);
+
+void set_status_line(std::string &s, const std::string &status_line);
 
 #endif //KIMBERLY_UTIL_H

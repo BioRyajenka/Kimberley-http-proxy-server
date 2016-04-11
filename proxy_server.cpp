@@ -153,3 +153,34 @@ void proxy_server::remove_handler(int fd) {
 void proxy_server::queue_to_process(client_handler *h) {
     to_process.push_back(h);
 }
+
+/* * 1 * 2 * 3 * read-write functions * 3 * 2 * 1 * */
+
+bool proxy_server::write_chunk(const handler &h, buffer &buf) {
+    //Log::d("writing chunk");
+    //Log::d("(" + inttostr(buf.length()) + "): " + buf.string_data());
+    int to_send = std::min(buf.length(), BUFFER_SIZE);
+    //Log::d(inttostr(to_send) + " bytes sended");
+    if (send(h.fd, buf.get(to_send), to_send, 0) != to_send) {
+        Log::fatal("Error writing to socket");
+        //exit(-1);
+    }
+    //Log::d("(" + inttostr(buf.length()) + "): " + buf.string_data());
+    //Log::d(buf.empty() ? "empty" : "not empty");
+
+    return buf.empty();
+}
+
+bool proxy_server::read_chunk(const handler &h, buffer &buf) {
+    ssize_t received;
+    if ((received = recv(h.fd, temp_buffer, BUFFER_SIZE, 0)) < 0) {
+        perror("read_chunk");
+        Log::fatal("fatal in read_chunk");
+        //exit(-1);
+    }
+    buf.put(temp_buffer, received);
+
+    Log::d("read_chunk (" + inttostr(received) + "): \n\"" + std::string(temp_buffer, received) + "\"");
+
+    return received == 0;
+}

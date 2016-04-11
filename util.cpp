@@ -42,8 +42,8 @@ std::string inttostr(int n) {
 }
 
 int hextoint(const std::string &s) {
-    Log::d("hex " + s + " to string " + inttostr(std::stoul("0x" + s, nullptr, 16)));
-    return std::stoul("0x" + s, nullptr, 16);
+    Log::d("hex " + s + " to string " + inttostr((int)std::stoul("0x" + s, nullptr, 16)));
+    return (int)std::stoul("0x" + s, nullptr, 16);
 }
 
 std::string eetostr(const epoll_event &ev) {
@@ -91,7 +91,7 @@ bool is_break_char(char c) {
 }
 
 //since start till to
-bool extract_property(std::string &s, int to, std::string name, std::string &result) {
+bool extract_header(const std::string &s, int to, std::string name, std::string &result) {
     //Log::d("Extracting property '" + name + "'");
     int s_pos = -1;
     int from = (int) name.length() + 1;
@@ -133,5 +133,14 @@ bool extract_property(std::string &s, int to, std::string name, std::string &res
 
 //returns position next to \r\n. (e.g. 2 for string \r\na and 3 for string a\r\n)
 int find_double_line_break(const std::string &s, int from) {
-    return s.find("\r\n\r\n", from) + 4;
+    return (int) s.find("\r\n\r\n", from) + 4;
+}
+
+std::string extract_method(const std::string &s) {
+    return s.substr(0, s.find(' '));
+}
+
+void set_status_line(std::string &s, const std::string &status_line) {
+    size_t linebreak = s.find("\r\n");
+    s = status_line + s.substr(linebreak, s.length() - linebreak);
 }

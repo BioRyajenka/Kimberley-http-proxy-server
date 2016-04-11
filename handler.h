@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include "util.h"
 #include "proxy_server.h"
+#include "buffer.h"
 
 class handler {
 public:
@@ -37,24 +38,26 @@ public:
     void process();
 
 private:
-#define BUFFER_SIZE 1024
-    char buffer[BUFFER_SIZE + 1];
-    std::string large_buffer;
-    int bytes_sended;
+    buffer input_buffer;
+    buffer output_buffer;
     int message_len;
 
     enum {NOT_EVALUATED, WITHOUT_BODY, VIA_CONTENT_LENGTH, VIA_TRANSFER_ENCODING, HTTPS_MODE} message_type;
 
     int _client_request_socket;
-
-    // returns true if large_buffer was totally sended to fd
-    bool write_chunk(const handler &h);
-    // returns true if recv returned 0
-    bool read_chunk(const handler &h);
-    // retunrs true if all the message was read
-    bool read_message(const handler &h);
+    handler *clrh = 0;
 
     void resolve_host_ip(std::string);
+
+    // retunrs true if all the message was read
+    bool read_message(const handler &h, buffer &buf);
+
+    void disconnect() const {
+        handler::disconnect();
+        if (clrh) {
+            clrh->disconnect();
+        }
+    }
 
     class client_request_handler : public handler {
     public:
@@ -62,13 +65,15 @@ private:
             this->fd = sock;
             this->serv = serv;
             this->clh = clh;
+
+            clh->clrh = this;
         }
 
         bool handle(epoll_event);
 
         void disconnect() const {
+            clh->clrh = 0;
             handler::disconnect();
-            clh->disconnect();
         }
 
     private:

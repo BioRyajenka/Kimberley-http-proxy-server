@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <mutex>
 #include <list>
+#include "buffer.h"
 
 class handler;
 
@@ -17,7 +18,6 @@ class client_handler;
 
 class proxy_server {
 public:
-
     proxy_server(std::string host, uint16_t port);
 
     void prepare();
@@ -35,6 +35,14 @@ public:
     void queue_to_process(client_handler *);
 
     std::mutex to_process_mutex;
+
+#define BUFFER_SIZE 1024
+
+    // returns true if large_buffer was totally sended to fd
+    bool write_chunk(const handler &h, buffer &buf);
+    // returns true if recv returned 0
+    bool read_chunk(const handler &h, buffer &buf);
+
 protected:
 #define TARGET_CONNECTIONS 10000
     const int DEFAULT_TIMEOUT = -1;
@@ -47,6 +55,8 @@ protected:
 
     std::vector<handler *> handlers;
     std::list<client_handler *> to_process;
+
+    char temp_buffer[BUFFER_SIZE];
 };
 
 #endif //KIMBERLY_PROXY_SERVER_H
