@@ -21,7 +21,7 @@ proxy_server::proxy_server(std::string host, uint16_t port) {
     Log::d("Server host is " + std::string(inet_ntoa(antelope)) + ", port is "
            + inttostr(ntohs(proxy_server::port)));
 
-    CHK2(listenerSocket, socket(PF_INET, SOCK_STREAM, 0));
+    CHK2(listenerSocket, socket(AF_INET, SOCK_STREAM, 0));
 
     int enable = 1;
     CHK(setsockopt(listenerSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)));
@@ -54,12 +54,12 @@ void proxy_server::loop() {
     while (1) {
         int epoll_events_count;
         CHK2(epoll_events_count, epoll_wait(epfd, events, TARGET_CONNECTIONS, DEFAULT_TIMEOUT));
-        Log::d("Epoll events count: " + inttostr(epoll_events_count));
+        //Log::d("Epoll events count: " + inttostr(epoll_events_count));
 
         clock_t tStart = clock();
 
         for (int i = 0; i < epoll_events_count; i++) {
-            Log::d("event " + inttostr(i) + ": " + eetostr(events[i]));
+            // Log::d("event " + inttostr(i) + ": " + eetostr(events[i]));
             if ((events[i].events & EPOLLERR) || events[i].events & EPOLLHUP) {
                 close(events[i].data.fd);
             } else {
@@ -72,8 +72,8 @@ void proxy_server::loop() {
         }
         to_process.clear();
 
-        printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
-               (double) (clock() - tStart) / CLOCKS_PER_SEC);
+        //printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
+        //       (double) (clock() - tStart) / CLOCKS_PER_SEC);
         std::cout.flush();
     }
 }
@@ -147,7 +147,9 @@ void proxy_server::remove_handler(int fd) {
         Log::e(std::string("PREV IS ") + (prev == 0 ? "FAIL" : "NORM"));
     }
 
-    close(fd);
+    //close(fd);
+
+    Log::d("success");
 }
 
 void proxy_server::queue_to_process(std::function<void()> f) {
@@ -159,8 +161,13 @@ void proxy_server::queue_to_process(std::function<void()> f) {
 /* * 1 * 2 * 3 * read-write functions * 3 * 2 * 1 * */
 
 bool proxy_server::write_chunk(const handler &h, buffer &buf) {
+    if (buf.empty()) {
+        return false;
+    }
     //Log::d("writing chunk");
     //Log::d("(" + inttostr(buf.length()) + "): " + buf.string_data());
+    int kkek = buf.length();
+
     int to_send = std::min(buf.length(), BUFFER_SIZE);
     //Log::d(inttostr(to_send) + " bytes sended");
     if (send(h.fd, buf.get(to_send), (size_t) to_send, 0) != to_send) {
@@ -169,6 +176,8 @@ bool proxy_server::write_chunk(const handler &h, buffer &buf) {
     }
     //Log::d("(" + inttostr(buf.length()) + "): " + buf.string_data());
     //Log::d(buf.empty() ? "empty" : "not empty");
+
+    //Log::d("write_chunk(" + inttostr(to_send) + ", " + inttostr(kkek) + ")");
 
     return buf.empty();
 }

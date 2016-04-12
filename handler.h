@@ -17,7 +17,7 @@ public:
     int fd;
     proxy_server *serv;
 public:
-    virtual bool handle(epoll_event) = 0;
+    virtual void handle(const epoll_event&) = 0;
 
     virtual void disconnect() const {
         serv->remove_handler(fd);
@@ -33,7 +33,7 @@ public:
         message_type = NOT_EVALUATED;
     }
 
-    bool handle(epoll_event);
+    void handle(const epoll_event&);
 
 private:
     buffer input_buffer;
@@ -69,7 +69,7 @@ private:
             clh->clrh = this;
         }
 
-        bool handle(epoll_event);
+        void handle(const epoll_event&);
 
         void disconnect() const {
             clh->clrh = 0;
@@ -89,7 +89,7 @@ public:
         this->serv = serv;
     }
 
-    bool handle(epoll_event);
+    void handle(const epoll_event&);
 };
 
 #endif //KIMBERLY_HANDLER_H

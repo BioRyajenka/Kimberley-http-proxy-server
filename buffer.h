@@ -10,7 +10,8 @@
 
 class buffer {
 public:
-    const char * get(int amount);
+    // !caution! don't call trim() (length() etc) immediately after this method
+    const char *get(int amount);
 
     void set(const char *const data) {
         clear();
@@ -26,7 +27,7 @@ public:
     //minus "offset"
     int length();
 
-    const std::string& string_data();
+    const std::string &string_data();
 
 private:
     std::string data;

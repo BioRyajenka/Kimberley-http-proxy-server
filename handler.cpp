@@ -6,7 +6,7 @@
 #include <cassert>
 #include <netdb.h>
 
-bool server_handler::handle(epoll_event) {
+void server_handler::handle(const epoll_event &) {
     Log::d("Server handler");
     sockaddr_in client_addr;
     socklen_t ca_len = sizeof(client_addr);
@@ -24,14 +24,13 @@ bool server_handler::handle(epoll_event) {
 
     Log::d("Client connected: " + std::string(inet_ntoa(client_addr.sin_addr)) + ":" + inttostr(client_addr.sin_port));
     serv->add_handler(client, new client_handler(client, serv), EPOLLIN);
-    return true;
 }
 
 bool client_handler::read_message(const handler &h, buffer &buf) {
     int plen = buf.length();
 
     if (serv->read_chunk(h, buf)) {
-        Log::w("Very difficult situation. Disconnecting");
+        Log::w("fd(" + inttostr(h.fd) + ") asked for disconnect");
         disconnect();
         return false;
     }
@@ -77,7 +76,7 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
     }
 }
 
-bool client_handler::handle(epoll_event e) {
+void client_handler::handle(const epoll_event &e) {
     if (!(e.events & EPOLLOUT) || (e.events & EPOLLIN) || !input_buffer.empty()) {
         Log::d("Client handler: " + eetostr(e));
     }
@@ -86,6 +85,7 @@ bool client_handler::handle(epoll_event e) {
             Log::d("Finished resending host response to client");
             if (message_type == PRE_HTTPS_MODE) {
                 message_type = HTTPS_MODE;
+
                 std::string hostname;
                 extract_header(input_buffer.string_data(), input_buffer.length(), "Host", hostname);
                 input_buffer.clear();
@@ -99,7 +99,6 @@ bool client_handler::handle(epoll_event e) {
                 serv->modify_handler(fd, EPOLLIN);
             }
         }
-        return true;
     }
 
     if (e.events & EPOLLIN) {
@@ -115,29 +114,28 @@ bool client_handler::handle(epoll_event e) {
                     output_buffer.set("HTTP/1.0 200 OK\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
                     serv->modify_handler(fd, EPOLLOUT);
                     message_type = PRE_HTTPS_MODE;
-                    return true;
+                } else {
+                    if (message_type == WITHOUT_BODY && extract_method(data) == "GET") {
+                        // modifying status line
+                        size_t from = data.find(hostname) + hostname.length();
+
+                        data = "GET " +
+                               input_buffer.string_data().substr(from, input_buffer.string_data().length() - from);
+                        input_buffer.clear();
+                        input_buffer.put(data.c_str(), data.length());
+
+                        Log::d("new query is: \"\n" + input_buffer.string_data() + "\"");
+                    }
+
+                    resolve_host_ip(hostname, EPOLLOUT);
                 }
-
-                if (message_type == WITHOUT_BODY && extract_method(data) == "GET") {
-                    // modifying status line
-                    size_t from = data.find(hostname) + hostname.length();
-
-                    data = "GET " + input_buffer.string_data().substr(from, input_buffer.string_data().length() - from);
-                    input_buffer.clear();
-                    input_buffer.put(data.c_str(), data.length());
-                }
-
-                resolve_host_ip(hostname, EPOLLOUT);
             } else {
                 //TODO: send correspond answer
                 Log::fatal("Client headers do not contain 'host' header");
                 //exit(-1);
             }
         }
-        return true;
     }
-
-    return false;
 }
 
 void client_handler::resolve_host_ip(std::string hostname, const uint &flags) {
@@ -169,7 +167,9 @@ void client_handler::resolve_host_ip(std::string hostname, const uint &flags) {
 
     Log::d("Ip is " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
 
-    CHK2(_client_request_socket, socket(PF_INET, SOCK_STREAM, 0));
+    CHK2(_client_request_socket, socket(AF_INET, SOCK_STREAM, 0));
+
+    setnonblocking(_client_request_socket);
 
     struct sockaddr_in addr;
 
@@ -177,9 +177,11 @@ void client_handler::resolve_host_ip(std::string hostname, const uint &flags) {
     addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));
     addr.sin_port = htons(port);
 
-    CHK(connect(_client_request_socket, (struct sockaddr *) &addr, sizeof(addr)));
-
-    setnonblocking(_client_request_socket);
+    connect(_client_request_socket, (struct sockaddr *) &addr, sizeof(addr));
+    if (errno != EINPROGRESS) {
+        perror("connect");
+        Log::fatal("connect");
+    }
 
     serv->queue_to_process([this, flags]() {
         Log::d("Creating client_request socket fd(" + inttostr(_client_request_socket) + ") for client fd(" +
@@ -190,30 +192,27 @@ void client_handler::resolve_host_ip(std::string hostname, const uint &flags) {
     });
 }
 
-bool client_handler::client_request_handler::handle(epoll_event e) {
+void client_handler::client_request_handler::handle(const epoll_event &e) {
     if (!(e.events & EPOLLOUT) || (e.events & EPOLLIN) || !clh->input_buffer.empty()) {
         Log::d("Client request handler: " + eetostr(e));
     }
     if (e.events & EPOLLOUT) {
-        if (serv->write_chunk(*this, clh->input_buffer) && clh->message_len != HTTPS_MODE) {
-            Log::d("Finished resending query to host");
+        if (serv->write_chunk(*this, clh->input_buffer) && clh->message_type != HTTPS_MODE) {
+            Log::d("Finished resending query to host: \"\n" + clh->input_buffer.string_data() + "\"");
+            Log::d(std::string("empty: ") + (clh->input_buffer.empty() ? "yes" : "no :("));
             serv->modify_handler(fd, EPOLLIN);
             clh->output_buffer.clear();
 
             clh->message_len = -1;
             clh->message_type = NOT_EVALUATED;
         }
-        return true;
     }
 
     if (e.events & EPOLLIN) {
-        if (clh->read_message(*this, clh->output_buffer) && clh->message_len != HTTPS_MODE) {
+        if (clh->read_message(*this, clh->output_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("It seems that all message was received.");
             disconnect(); // only me
             serv->modify_handler(clh->fd, EPOLLOUT);
-            return true;
         }
-        return true;
     }
-    return false;
 }

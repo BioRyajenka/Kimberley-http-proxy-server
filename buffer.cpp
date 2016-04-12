@@ -6,16 +6,17 @@
 #include "buffer.h"
 #include "util.h"
 
-const char * buffer::get(int amount) {
-    assert(amount <= data.length());
-
-    const char * res = data.c_str() + offset;
-
-    offset += amount;
+//!caution! after (trim) result of get will be unpredictable
+const char *buffer::get(int amount) {
+    assert(amount + offset <= data.length());
 
     if (data.length() >= 10000 || offset == data.length()) {
         trim();
     }
+
+    const char *res = data.c_str() + offset;
+
+    offset += amount;
 
     return res;
 }
@@ -29,10 +30,12 @@ bool buffer::empty() {
 }
 
 int buffer::length() {
+    Log::d("data.length(): " + inttostr(data.length()));
+    Log::d("offset: " + inttostr(offset));
     return (int) (data.length() - offset);
 }
 
-const std::string& buffer::string_data() {
+const std::string &buffer::string_data() {
     trim();
     return data;
 }

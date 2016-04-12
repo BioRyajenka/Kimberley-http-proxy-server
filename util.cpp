@@ -92,7 +92,7 @@ bool is_break_char(char c) {
 
 //since start till to
 bool extract_header(const std::string &s, int to, std::string name, std::string &result) {
-    //Log::d("Extracting property '" + name + "'");
+    Log::d("Extracting property '" + name + "'");
     int s_pos = -1;
     int from = (int) name.length() + 1;
     for (int i = from; i < to; i++) {
