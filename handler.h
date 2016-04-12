@@ -20,7 +20,9 @@ public:
     virtual void handle(const epoll_event&) = 0;
 
     virtual void disconnect() const {
+        std::cout << "disconnecting fd(" << fd << ")" << "\n";
         serv->remove_handler(fd);
+        std::cout << "success disconnecting\n";
     }
 };
 

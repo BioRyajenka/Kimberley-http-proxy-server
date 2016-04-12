@@ -128,8 +128,6 @@ void proxy_server::modify_handler(int fd, uint events) {
 }
 
 void proxy_server::remove_handler(int fd) {
-    handler *prev = handlers[fd];
-
     if (fd >= handlers.size() || !handlers[fd]) {
         Log::e("Removing handler of a non registered file descriptor");
         return;
@@ -144,10 +142,9 @@ void proxy_server::remove_handler(int fd) {
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &e) < 0) {
         Log::e("Failed to modify epoll events [remove]");
         perror(("remove_handler (fd=" + inttostr(fd) + ")").c_str());
-        Log::e(std::string("PREV IS ") + (prev == 0 ? "FAIL" : "NORM"));
     }
 
-    //close(fd);
+    close(fd);
 
     Log::d("success");
 }

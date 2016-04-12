@@ -10,7 +10,7 @@
 
 class buffer {
 public:
-    // !caution! don't call trim() (length() etc) immediately after this method
+    // !caution! don't call trim() (and clear() and put() everything changing data) immediately after this method
     const char *get(int amount);
 
     void set(const char *const data) {

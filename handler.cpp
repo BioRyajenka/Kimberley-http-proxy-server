@@ -30,7 +30,7 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
     int plen = buf.length();
 
     if (serv->read_chunk(h, buf)) {
-        Log::w("fd(" + inttostr(h.fd) + ") asked for disconnect");
+        Log::d("fd(" + inttostr(h.fd) + ") asked for disconnection");
         disconnect();
         return false;
     }
@@ -55,6 +55,11 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
     if (message_type == NOT_EVALUATED) {
         return false;
     }
+
+    if (message_type != HTTPS_MODE) {
+        Log::d("read_message(" + inttostr(buf.length()) + ", " + inttostr(message_len) + ")");
+    }
+
     if (message_type == VIA_TRANSFER_ENCODING) {
         if (buf.length() > message_len) {
             Log::d("kek is  " + inttostr((int) buf.string_data()[message_len - 1]) + " " +
@@ -77,7 +82,7 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
 }
 
 void client_handler::handle(const epoll_event &e) {
-    if (!(e.events & EPOLLOUT) || (e.events & EPOLLIN) || !input_buffer.empty()) {
+    if (!(e.events & EPOLLOUT) || (e.events & EPOLLIN) || !output_buffer.empty()) {
         Log::d("Client handler: " + eetostr(e));
     }
     if (e.events & EPOLLOUT) {
@@ -114,6 +119,7 @@ void client_handler::handle(const epoll_event &e) {
                     output_buffer.set("HTTP/1.0 200 OK\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
                     serv->modify_handler(fd, EPOLLOUT);
                     message_type = PRE_HTTPS_MODE;
+                    Log::d("entering HTTPS_MODE");
                 } else {
                     if (message_type == WITHOUT_BODY && extract_method(data) == "GET") {
                         // modifying status line
@@ -198,8 +204,7 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
     }
     if (e.events & EPOLLOUT) {
         if (serv->write_chunk(*this, clh->input_buffer) && clh->message_type != HTTPS_MODE) {
-            Log::d("Finished resending query to host: \"\n" + clh->input_buffer.string_data() + "\"");
-            Log::d(std::string("empty: ") + (clh->input_buffer.empty() ? "yes" : "no :("));
+            Log::d("Finished resending query to host: \n\"" + clh->input_buffer.string_data() + "\"");
             serv->modify_handler(fd, EPOLLIN);
             clh->output_buffer.clear();
 

@@ -30,8 +30,6 @@ bool buffer::empty() {
 }
 
 int buffer::length() {
-    Log::d("data.length(): " + inttostr(data.length()));
-    Log::d("offset: " + inttostr(offset));
     return (int) (data.length() - offset);
 }
 
