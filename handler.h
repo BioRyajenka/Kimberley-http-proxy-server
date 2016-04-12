@@ -47,7 +47,7 @@ private:
     int _client_request_socket;
     handler *clrh = 0;
 
-    void resolve_host_ip(std::string, const int &flags);
+    void resolve_host_ip(std::string, const uint &flags);
 
     // retunrs true if all the message was read
     bool read_message(const handler &h, buffer &buf);

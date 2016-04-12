@@ -64,11 +64,11 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
             if (buf.string_data()[message_len] == '0') {
                 return true;
             }
-            size_t linebreak = buf.string_data().find("\r\n", message_len);
+            size_t linebreak = buf.string_data().find("\r\n", (size_t) message_len);
             if (linebreak != std::string::npos) {
-                std::string chunklen = buf.string_data().substr(message_len, linebreak - message_len);
+                std::string chunklen = buf.string_data().substr((size_t) message_len, linebreak - message_len);
                 Log::d("Next chunk len is " + chunklen);
-                message_len = message_len + chunklen.length() + hextoint(chunklen) + 4;
+                message_len += chunklen.length() + hextoint(chunklen) + 4;
             }
             return false;
         }
@@ -109,7 +109,7 @@ bool client_handler::handle(epoll_event e) {
             serv->modify_handler(fd, 0);
 
             std::string hostname;
-            if (extract_header(data, data.length(), "Host", hostname)) {
+            if (extract_header(data, (int) data.length(), "Host", hostname)) {
                 if (message_type == WITHOUT_BODY && extract_method(data) == "CONNECT") {
                     //output_buffer.set("HTTP/1.0 404 Fail\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
                     output_buffer.set("HTTP/1.0 200 OK\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
@@ -140,7 +140,7 @@ bool client_handler::handle(epoll_event e) {
     return false;
 }
 
-void client_handler::resolve_host_ip(std::string hostname, const int &flags) {
+void client_handler::resolve_host_ip(std::string hostname, const uint &flags) {
     Log::d("Resolving hostname \"" + hostname + "\"");
     uint16_t port = 80;
 
@@ -182,7 +182,8 @@ void client_handler::resolve_host_ip(std::string hostname, const int &flags) {
     setnonblocking(_client_request_socket);
 
     serv->queue_to_process([this, flags]() {
-        Log::d("Creating client_request socket fd(" + inttostr(_client_request_socket) + ") for client fd(" + inttostr(fd) +
+        Log::d("Creating client_request socket fd(" + inttostr(_client_request_socket) + ") for client fd(" +
+               inttostr(fd) +
                ")");
         serv->add_handler(_client_request_socket,
                           new client_handler::client_request_handler(_client_request_socket, serv, this), flags);
