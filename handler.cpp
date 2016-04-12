@@ -78,7 +78,9 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
 }
 
 bool client_handler::handle(epoll_event e) {
-    Log::d("Client handler: " + eetostr(e));
+    if (!(e.events & EPOLLOUT) || (e.events & EPOLLIN) || !input_buffer.empty()) {
+        Log::d("Client handler: " + eetostr(e));
+    }
     if (e.events & EPOLLOUT) {
         if (serv->write_chunk(*this, output_buffer) && message_type != HTTPS_MODE) {
             Log::d("Finished resending host response to client");
