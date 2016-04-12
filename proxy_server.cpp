@@ -63,7 +63,11 @@ void proxy_server::loop() {
             if ((events[i].events & EPOLLERR) || events[i].events & EPOLLHUP) {
                 close(events[i].data.fd);
             } else {
-                handlers[events[i].data.fd]->handle(events[i]);
+                if (handlers[events[i].data.fd]) {
+                    handlers[events[i].data.fd]->handle(events[i]);
+                } else {
+                    Log::e("Trying to handle fd(" + inttostr(events[i].data.fd) + ") which was deleted: " + eetostr(events[i]));
+                }
             }
         }
 

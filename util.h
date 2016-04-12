@@ -10,6 +10,8 @@
 #include <vector>
 #include <sys/epoll.h>
 #include <stdexcept>
+#include <execinfo.h>
+#include <unistd.h>
 #include "handler.h"
 //#include <cstdio>
 
@@ -50,8 +52,8 @@ private:
     static void print(std::string prefix, std::string message) {
         std::string result_message = get_time() + " [" + prefix + "]: " + message + "\n";
 
-        fflush(::stdout);
-        fflush(::stderr);
+        fflush(stdout);
+        fflush(stderr);
         std::cerr.flush();
         for (std::ostream *o : targets) {
             o->flush();
@@ -59,8 +61,8 @@ private:
             o->flush();
         }
         std::cerr.flush();
-        fflush(::stdout);
-        fflush(::stderr);
+        fflush(stdout);
+        fflush(stderr);
     }
 
 public:
@@ -90,6 +92,35 @@ public:
     static void fatal(std::string message) {
         e(message);
         throw std::runtime_error(message);
+    }
+
+    static void print_stack_trace(int depth) {
+        void *trace[depth];
+        int trace_size = backtrace(trace, depth);
+
+        //trace[1] = (void *) ctx.eip;
+        char **messages = backtrace_symbols(trace, trace_size);
+        /* skip first stack frame (points here) */
+        printf("[bt] Execution path:\n");
+        for (int i = 1; i < trace_size; ++i) {
+            printf("[bt] #%d %s\n", i, messages[i]);
+
+            /* find first occurence of '(' or ' ' in message[i] and assume
+             * everything before that is the file name. (Don't go beyond 0 though
+             * (string terminator)*/
+            size_t p = 0;
+            while (messages[i][p] != '(' && messages[i][p] != ' '
+                   && messages[i][p] != 0)
+                ++p;
+
+            char syscom[256];
+            sprintf(syscom, "addr2line %p -e %.*s", trace[i], p, messages[i]);
+            //last parameter is the file name of the symbol
+            system(syscom);
+        }
+
+
+        fflush(stderr);
     }
 };
 
