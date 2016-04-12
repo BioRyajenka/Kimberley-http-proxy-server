@@ -188,9 +188,11 @@ void client_handler::resolve_host_ip(std::string hostname, const int &flags) {
 }
 
 bool client_handler::client_request_handler::handle(epoll_event e) {
-    Log::d("Client request handler: " + eetostr(e));
+    if (!(e.events & EPOLLOUT) || (e.events & EPOLLIN) || !clh->input_buffer.empty()) {
+        Log::d("Client request handler: " + eetostr(e));
+    }
     if (e.events & EPOLLOUT) {
-        if (serv->write_chunk(*this, clh->input_buffer)) {
+        if (serv->write_chunk(*this, clh->input_buffer) && clh->message_len != HTTPS_MODE) {
             Log::d("Finished resending query to host");
             serv->modify_handler(fd, EPOLLIN);
             clh->output_buffer.clear();
@@ -202,7 +204,7 @@ bool client_handler::client_request_handler::handle(epoll_event e) {
     }
 
     if (e.events & EPOLLIN) {
-        if (clh->read_message(*this, clh->output_buffer)) {
+        if (clh->read_message(*this, clh->output_buffer) && clh->message_len != HTTPS_MODE) {
             Log::d("It seems that all message was received.");
             disconnect(); // only me
             serv->modify_handler(clh->fd, EPOLLOUT);
