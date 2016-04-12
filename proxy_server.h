@@ -32,14 +32,13 @@ public:
 
     void remove_handler(int fd);
 
-    void queue_to_process(client_handler *);
-
-    std::mutex to_process_mutex;
+    void queue_to_process(std::function<void()>);
 
 #define BUFFER_SIZE 1024
 
     // returns true if large_buffer was totally sended to fd
     bool write_chunk(const handler &h, buffer &buf);
+
     // returns true if recv returned 0
     bool read_chunk(const handler &h, buffer &buf);
 
@@ -54,7 +53,9 @@ protected:
     int epfd;//main epoll
 
     std::vector<handler *> handlers;
-    std::list<client_handler *> to_process;
+    std::list<std::function<void()>> to_process;
+
+    std::mutex to_process_mutex;
 
     char temp_buffer[BUFFER_SIZE];
 };

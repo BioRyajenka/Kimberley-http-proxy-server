@@ -59,7 +59,8 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
     if (message_type == VIA_TRANSFER_ENCODING) {
         if (buf.length() > message_len) {
             Log::d("kek is  " + inttostr((int) buf.string_data()[message_len - 1]) + " " +
-                   inttostr((int) buf.string_data()[message_len]) + " " + inttostr((int) buf.string_data()[message_len + 1]));
+                   inttostr((int) buf.string_data()[message_len]) + " " +
+                   inttostr((int) buf.string_data()[message_len + 1]));
             if (buf.string_data()[message_len] == '0') {
                 return true;
             }
@@ -79,47 +80,52 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
 bool client_handler::handle(epoll_event e) {
     Log::d("Client handler: " + eetostr(e));
     if (e.events & EPOLLOUT) {
-        /*if (message_type == HTTPS_MODE) {
-            return true;
-        }*/
-        if (serv->write_chunk(*this, output_buffer)) {
+        if (serv->write_chunk(*this, output_buffer) && message_type != HTTPS_MODE) {
             Log::d("Finished resending host response to client");
-            input_buffer.clear();
-            message_len = -1;
-            message_type = NOT_EVALUATED;
-            serv->modify_handler(fd, EPOLLIN);
+            if (message_type == PRE_HTTPS_MODE) {
+                message_type = HTTPS_MODE;
+                std::string hostname;
+                extract_header(input_buffer.string_data(), input_buffer.length(), "Host", hostname);
+                input_buffer.clear();
+                output_buffer.clear();
+                serv->modify_handler(fd, EPOLLIN | EPOLLOUT);
+                resolve_host_ip(hostname, EPOLLIN | EPOLLOUT);
+            } else {
+                input_buffer.clear();
+                message_len = -1;
+                message_type = NOT_EVALUATED;
+                serv->modify_handler(fd, EPOLLIN);
+            }
         }
         return true;
     }
 
     if (e.events & EPOLLIN) {
-        if (read_message(*this, input_buffer)) {
-            if (message_type == WITHOUT_BODY && extract_method(input_buffer.string_data()) == "CONNECT") {
-                output_buffer.set("HTTP/1.0 404 Fail\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
-                serv->modify_handler(fd, EPOLLOUT);
-                message_type = HTTPS_MODE;
-                return true;
-            }
+        if (read_message(*this, input_buffer) && message_type != HTTPS_MODE) {
+            std::string data = input_buffer.string_data();
 
             serv->modify_handler(fd, 0);
 
-            //TODO: new process
             std::string hostname;
-            if (extract_header(input_buffer.string_data(), input_buffer.length(), "Host", hostname)) {
+            if (extract_header(data, data.length(), "Host", hostname)) {
+                if (message_type == WITHOUT_BODY && extract_method(data) == "CONNECT") {
+                    //output_buffer.set("HTTP/1.0 404 Fail\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
+                    output_buffer.set("HTTP/1.0 200 OK\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
+                    serv->modify_handler(fd, EPOLLOUT);
+                    message_type = PRE_HTTPS_MODE;
+                    return true;
+                }
 
-                if (message_type == WITHOUT_BODY && extract_method(input_buffer.string_data()) == "GET") {
+                if (message_type == WITHOUT_BODY && extract_method(data) == "GET") {
                     // modifying status line
-                    std::string data = input_buffer.string_data();
-                    size_t from = data.find(/*"http://" + */hostname) + hostname.length();// + std::string("http://").length();
+                    size_t from = data.find(hostname) + hostname.length();
 
                     data = "GET " + input_buffer.string_data().substr(from, input_buffer.string_data().length() - from);
                     input_buffer.clear();
                     input_buffer.put(data.c_str(), data.length());
-
-                    //Log::d("new query is \"" + input_buffer.string_data() + "\"");
                 }
 
-                resolve_host_ip(hostname);
+                resolve_host_ip(hostname, EPOLLOUT);
             } else {
                 //TODO: send correspond answer
                 Log::fatal("Client headers do not contain 'host' header");
@@ -132,7 +138,7 @@ bool client_handler::handle(epoll_event e) {
     return false;
 }
 
-void client_handler::resolve_host_ip(std::string hostname) {
+void client_handler::resolve_host_ip(std::string hostname, const int &flags) {
     Log::d("Resolving hostname \"" + hostname + "\"");
     uint16_t port = 80;
 
@@ -173,16 +179,12 @@ void client_handler::resolve_host_ip(std::string hostname) {
 
     setnonblocking(_client_request_socket);
 
-    serv->to_process_mutex.lock();
-    serv->queue_to_process(this);
-    serv->to_process_mutex.unlock();
-}
-
-void client_handler::process() {
-    Log::d("Creating client_request socket fd(" + inttostr(_client_request_socket) + ") for client fd(" + inttostr(fd) +
-           ")");
-    serv->add_handler(_client_request_socket,
-                      new client_handler::client_request_handler(_client_request_socket, serv, this), EPOLLOUT);
+    serv->queue_to_process([this, flags]() {
+        Log::d("Creating client_request socket fd(" + inttostr(_client_request_socket) + ") for client fd(" + inttostr(fd) +
+               ")");
+        serv->add_handler(_client_request_socket,
+                          new client_handler::client_request_handler(_client_request_socket, serv, this), flags);
+    });
 }
 
 bool client_handler::client_request_handler::handle(epoll_event e) {

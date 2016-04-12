@@ -19,7 +19,7 @@ public:
 public:
     virtual bool handle(epoll_event) = 0;
 
-    void disconnect() const {
+    virtual void disconnect() const {
         serv->remove_handler(fd);
     }
 };
@@ -35,19 +35,19 @@ public:
 
     bool handle(epoll_event);
 
-    void process();
-
 private:
     buffer input_buffer;
     buffer output_buffer;
     int message_len;
 
-    enum {NOT_EVALUATED, WITHOUT_BODY, VIA_CONTENT_LENGTH, VIA_TRANSFER_ENCODING, HTTPS_MODE} message_type;
+    enum {
+        NOT_EVALUATED, WITHOUT_BODY, VIA_CONTENT_LENGTH, VIA_TRANSFER_ENCODING, PRE_HTTPS_MODE, HTTPS_MODE
+    } message_type;
 
     int _client_request_socket;
     handler *clrh = 0;
 
-    void resolve_host_ip(std::string);
+    void resolve_host_ip(std::string, const int &flags);
 
     // retunrs true if all the message was read
     bool read_message(const handler &h, buffer &buf);

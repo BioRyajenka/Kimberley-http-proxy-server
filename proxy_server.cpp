@@ -68,7 +68,7 @@ void proxy_server::loop() {
         }
 
         for (auto &h : to_process) {
-            h->process();
+            h();
         }
         to_process.clear();
 
@@ -114,7 +114,7 @@ void proxy_server::modify_handler(int fd, uint events) {
 
     if (fd >= handlers.size() || !handlers[fd]) {
         Log::e("Changing handler of unregistered file descriptor: " + inttostr(fd));
-        Log::d("size is " + inttostr(handlers.size()) + ", handlers[fd] is " + (handlers[fd] ? "yes" : "no"));
+        Log::d("size is " + inttostr((int) handlers.size()) + ", handlers[fd] is " + (handlers[fd] ? "yes" : "no"));
         return;
     }
 
@@ -123,12 +123,12 @@ void proxy_server::modify_handler(int fd, uint events) {
 
     if (epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &e) < 0) {
         Log::e("Failed to modify epoll events " + eetostr(e) + " [modify]");
-        perror(("modify_handler (fd=" + inttostr(fd) + ", events=" + inttostr(events) +")").c_str());
+        perror(("modify_handler (fd=" + inttostr(fd) + ", events=" + inttostr(events) + ")").c_str());
     }
 }
 
 void proxy_server::remove_handler(int fd) {
-    handler * prev = handlers[fd];
+    handler *prev = handlers[fd];
 
     if (fd >= handlers.size() || !handlers[fd]) {
         Log::e("Removing handler of a non registered file descriptor");
@@ -143,15 +143,17 @@ void proxy_server::remove_handler(int fd) {
     e.data.fd = fd;
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &e) < 0) {
         Log::e("Failed to modify epoll events [remove]");
-        perror(("remove_handler (fd=" + inttostr(fd) +")").c_str());
+        perror(("remove_handler (fd=" + inttostr(fd) + ")").c_str());
         Log::e(std::string("PREV IS ") + (prev == 0 ? "FAIL" : "NORM"));
     }
 
     close(fd);
 }
 
-void proxy_server::queue_to_process(client_handler *h) {
-    to_process.push_back(h);
+void proxy_server::queue_to_process(std::function<void()> f) {
+    to_process_mutex.lock();
+    to_process.push_back(f);
+    to_process_mutex.unlock();
 }
 
 /* * 1 * 2 * 3 * read-write functions * 3 * 2 * 1 * */
@@ -161,7 +163,7 @@ bool proxy_server::write_chunk(const handler &h, buffer &buf) {
     //Log::d("(" + inttostr(buf.length()) + "): " + buf.string_data());
     int to_send = std::min(buf.length(), BUFFER_SIZE);
     //Log::d(inttostr(to_send) + " bytes sended");
-    if (send(h.fd, buf.get(to_send), to_send, 0) != to_send) {
+    if (send(h.fd, buf.get(to_send), (size_t) to_send, 0) != to_send) {
         Log::fatal("Error writing to socket");
         //exit(-1);
     }
@@ -178,9 +180,9 @@ bool proxy_server::read_chunk(const handler &h, buffer &buf) {
         Log::fatal("fatal in read_chunk");
         //exit(-1);
     }
-    buf.put(temp_buffer, received);
+    buf.put(temp_buffer, (size_t) received);
 
-    Log::d("read_chunk (" + inttostr(received) + "): \n\"" + std::string(temp_buffer, received) + "\"");
+    Log::d("read_chunk (" + inttostr((int) received) + "): \n\"" + std::string(temp_buffer, received) + "\"");
 
     return received == 0;
 }
