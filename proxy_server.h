@@ -17,10 +17,12 @@ class handler;
 class client_handler;
 
 class proxy_server {
-public:
-    proxy_server(std::string host, uint16_t port);
+#define TARGET_CONNECTIONS 10000
+#define BUFFER_SIZE 1024
+#define DEFAULT_RESOLVER_THREADS 100
 
-    void prepare();
+public:
+    proxy_server(std::string host, uint16_t port, int resolver_threads = DEFAULT_RESOLVER_THREADS);
 
     void loop();
 
@@ -34,8 +36,6 @@ public:
 
     void queue_to_process(std::function<void()>);
 
-#define BUFFER_SIZE 1024
-
     // returns true if large_buffer was totally sended to fd
     bool write_chunk(const handler &h, buffer &buf);
 
@@ -43,9 +43,6 @@ public:
     bool read_chunk(const handler &h, buffer &buf);
 
 protected:
-#define TARGET_CONNECTIONS 10000
-    const int DEFAULT_TIMEOUT = -1;
-
     uint16_t port;
     in_addr_t host;
     int listenerSocket;

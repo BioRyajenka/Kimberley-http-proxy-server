@@ -1,10 +1,6 @@
 Known issues:
 // 3. https://mc.yandex.ru/metrika/watch.js ; gethostbyname returns 127.0.0.1 for mc.yandex.ru
 
-4. yandex opens messages slow ---> 5
-5. fucking lags ---> threads
-2. [Trying to handle fd which was deleted]
-
 TODO2: 
 1) explicit, extern words
 2) remove CHK
