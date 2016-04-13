@@ -42,8 +42,8 @@ std::string inttostr(int n) {
 }
 
 int hextoint(const std::string &s) {
-    Log::d("hex " + s + " to string " + inttostr((int)std::stoul("0x" + s, nullptr, 16)));
-    return (int)std::stoul("0x" + s, nullptr, 16);
+    Log::d("hex " + s + " to string " + inttostr((int) std::stoul("0x" + s, nullptr, 16)));
+    return (int) std::stoul("0x" + s, nullptr, 16);
 }
 
 std::string eetostr(const epoll_event &ev) {
@@ -108,7 +108,7 @@ bool extract_header(const std::string &s, int to, std::string name, std::string 
     }
 
     if (s_pos == -1) {
-        //Log::d("...property was not found");
+        Log::d("...property was not found");
         return false; // not found
     }
 
@@ -133,7 +133,11 @@ bool extract_header(const std::string &s, int to, std::string name, std::string 
 
 //returns position next to \r\n. (e.g. 2 for string \r\na and 3 for string a\r\n)
 int find_double_line_break(const std::string &s, int from) {
-    return (int) s.find("\r\n\r\n", from) + 4;
+    ulong res = s.find("\r\n\r\n", (ulong) from);
+    if (res == std::string::npos) {
+        return -1;
+    }
+    return (int) res + 4;
 }
 
 std::string extract_method(const std::string &s) {

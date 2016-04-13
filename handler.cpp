@@ -38,6 +38,8 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
         // recalc message len
         int lb = find_double_line_break(buf.string_data(), plen);
         if (lb != -1) {
+            //Log::d("plen is " + inttostr(plen) + ", lb is " + inttostr(lb) + " in \n\"" + buf.string_data() + "\"");
+
             std::string content_length_str;
             int len;
             if (extract_header(buf.string_data(), lb, "Content-Length", content_length_str)) {
@@ -52,16 +54,16 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
         }
     }
 
-    if (message_type == NOT_EVALUATED) {
-        return false;
-    }
-
     if (message_type != HTTPS_MODE) {
         Log::d("read_message(" + inttostr(buf.length()) + ", " + inttostr(message_len) + ")");
     }
 
+    if (message_type == NOT_EVALUATED) {
+        return false;
+    }
+
     if (message_type == VIA_TRANSFER_ENCODING) {
-        if (buf.length() > message_len) {
+        while (buf.length() > message_len) {
             Log::d("kek is  " + inttostr((int) buf.string_data()[message_len - 1]) + " " +
                    inttostr((int) buf.string_data()[message_len]) + " " +
                    inttostr((int) buf.string_data()[message_len + 1]));
@@ -74,8 +76,8 @@ bool client_handler::read_message(const handler &h, buffer &buf) {
                 Log::d("Next chunk len is " + chunklen);
                 message_len += chunklen.length() + hextoint(chunklen) + 4;
             }
-            return false;
         }
+        return false;
     } else {
         return buf.length() == message_len;
     }
@@ -204,7 +206,7 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
     }
     if (e.events & EPOLLOUT) {
         if (serv->write_chunk(*this, clh->input_buffer) && clh->message_type != HTTPS_MODE) {
-            Log::d("Finished resending query to host: \n\"" + clh->input_buffer.string_data() + "\"");
+            Log::d("Finished resending query to host");
             serv->modify_handler(fd, EPOLLIN);
             clh->output_buffer.clear();
 
