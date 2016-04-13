@@ -27,17 +27,16 @@ proxy_server::proxy_server(std::string host, uint16_t port) {
     CHK(setsockopt(listenerSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)));
 
     Log::d("Main listener(fd=" + inttostr(listenerSocket) + ") created!");
-    setnonblocking(listenerSocket);
+    //setnonblocking(listenerSocket);
 
     CHK2(epfd, epoll_create(TARGET_CONNECTIONS));
     Log::d("Epoll(fd=" + inttostr(epfd) + ") created!");
-}
 
-void proxy_server::prepare() {
+
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = host;
-    addr.sin_port = port;
+    addr.sin_addr.s_addr = proxy_server::host;
+    addr.sin_port = proxy_server::port;
 
     CHK(bind(listenerSocket, (struct sockaddr *) &addr, sizeof(addr)));
     Log::d("Listener binded to host");

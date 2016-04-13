@@ -31,7 +31,6 @@ int main() {
 
     proxy_server s("127.0.0.1", 4500);
     try {
-        s.prepare();
         s.loop();
     } catch (const std::exception &e) {
         Log::e("Exception " + std::string(e.what()));

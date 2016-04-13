@@ -20,8 +20,6 @@ class proxy_server {
 public:
     proxy_server(std::string host, uint16_t port);
 
-    void prepare();
-
     void loop();
 
     void terminate();
@@ -34,8 +32,6 @@ public:
 
     void queue_to_process(std::function<void()>);
 
-#define BUFFER_SIZE 1024
-
     // returns true if large_buffer was totally sended to fd
     bool write_chunk(const handler &h, buffer &buf);
 
@@ -43,6 +39,7 @@ public:
     bool read_chunk(const handler &h, buffer &buf);
 
 protected:
+#define BUFFER_SIZE 1024
 #define TARGET_CONNECTIONS 10000
     const int DEFAULT_TIMEOUT = -1;
 

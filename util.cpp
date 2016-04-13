@@ -112,15 +112,9 @@ bool extract_header(const std::string &s, int to, std::string name, std::string 
         return false; // not found
     }
 
-    int f_pos = -1;
-    for (int i = s_pos; i < to; i++) {
-        if (is_break_char(s[i])) {
-            f_pos = i;
-            break;
-        }
-    }
-    assert(f_pos != -1);
-    result = s.substr((unsigned long long) s_pos, (unsigned long long) f_pos - s_pos);
+    int f_pos = (int) s.find("\r\n", (ulong) s_pos);
+
+    result = s.substr((ulong) s_pos, (ulong) f_pos - s_pos);
     Log::d("...value is " + result);
     return true;
 }
@@ -134,10 +128,7 @@ bool extract_header(const std::string &s, int to, std::string name, std::string 
 //returns position next to \r\n. (e.g. 2 for string \r\na and 3 for string a\r\n)
 int find_double_line_break(const std::string &s, int from) {
     ulong res = s.find("\r\n\r\n", (ulong) from);
-    if (res == std::string::npos) {
-        return -1;
-    }
-    return (int) res + 4;
+    return (res == std::string::npos ? -1 : (int) res + 4);
 }
 
 std::string extract_method(const std::string &s) {
