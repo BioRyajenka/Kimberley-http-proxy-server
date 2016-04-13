@@ -1,18 +1,26 @@
-Known errors:
-1. ERR_BLOCKED_BY_CLIENT
-2. Trying to handle fd which was deleted
+Known issues:
+1. chrome ERR_BLOCKED_BY_CLIENT
+http://www.cplusplus.com/reference/stdexcept/logic_error/
+1.1. status canceled?
+2. [Trying to handle fd which was deleted]
+3. https://mc.yandex.ru/metrika/watch.js ; gethostbyname returns 127.0.0.1 for mc.yandex.ru
+4. yandex opens messages slow ---> 5
+5. fucking lags ---> threads
+6. http://translate.google.ru/
+7. http://stackoverflow.com/questions/12009423/what-does-status-canceled-for-a-resource-mean-in-chrome-developer-tools
+8. sometimes http://cdn.sstatic.net/clc/img/jobs/ico-remote-yellow.svg?v=59c0f4e1e97c
+9. sometimes http://vk.com
 
 TODO2: 
-0) modify status line if GET method used
 1) explicit, extern words
 2) remove CHK
+3) anonimous namespaces?
+4) const char *const ?!?!?!?!?!!?
+5) static_assert?
+6) make BUFFER_SIZE const
+7) r/l-value links
 
-3) clear bytes_sended after write_chunk() returned true
+8) cashing with partial GET methods
 
-4) anonimous namespaces?
-5) const char *const ?!?!?!?!?!!?
-6) static_assert?
-7) make BUFFER_SIZE const
-8) r/l-value links
-
-9) cashing with partial GET methods
+9) caching
+10) threads

@@ -85,7 +85,9 @@ void proxy_server::loop() {
 
 void proxy_server::terminate() {
     for (auto &h : handlers) {
-        close(h->fd);
+        if (h) {
+            close(h->fd);
+        }
     }
 
     close(listenerSocket);

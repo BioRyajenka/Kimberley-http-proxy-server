@@ -167,9 +167,9 @@ void client_handler::resolve_host_ip(std::string hostname, const uint &flags) {
         return;
     }
 
-    /*for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
-        Log::d("ips[i] = " + inttostr(i) + ", " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
-    }*/
+    for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
+        Log::d("ips[" + inttostr(i) + "] = " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
+    }
 
     Log::d("Ip is " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
 

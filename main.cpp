@@ -34,7 +34,7 @@ int main() {
         s.prepare();
         s.loop();
     } catch (const std::exception &e) {
-        s.terminate();
         Log::e("Exception " + std::string(e.what()));
+        s.terminate();
     }
 }
