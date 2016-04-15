@@ -3,6 +3,7 @@
 //
 
 #include "handler.h"
+#include "hostname_resolver.h"
 #include <cassert>
 #include <netdb.h>
 
@@ -23,13 +24,13 @@ void server_handler::handle(const epoll_event &) {
     ev.events = EPOLLIN;
 
     Log::d("Client connected: " + std::string(inet_ntoa(client_addr.sin_addr)) + ":" + inttostr(client_addr.sin_port));
-    serv->add_handler(client, new client_handler(client, serv), EPOLLIN);
+    serv->add_handler(new client_handler(client, serv), EPOLLIN);
 }
 
 bool client_handler::read_message(const handler &h, buffer &buf) {
     int plen = buf.length();
 
-    if (serv->read_chunk(h, buf)) {
+    if (serv->read_chunk(h, &buf)) {
         Log::d("fd(" + inttostr(h.fd) + ") asked for disconnection");
         disconnect();
         return false;
@@ -147,57 +148,7 @@ void client_handler::handle(const epoll_event &e) {
 }
 
 void client_handler::resolve_host_ip(std::string hostname, const uint &flags) {
-    Log::d("Resolving hostname \"" + hostname + "\"");
-    uint16_t port = 80;
-
-    for (size_t i = 0; i < hostname.length(); i++) {
-        if (hostname[i] == ':') {
-            port = (uint16_t) strtoint(hostname.substr(i + 1));
-            hostname = hostname.substr(0, i);
-            break;
-        }
-    }
-
-    Log::d("hostname is " + hostname + ", port is " + inttostr(port));
-
-    struct hostent *he;
-
-    if ((he = gethostbyname(hostname.c_str())) == 0) {
-        Log::d("hostname " + hostname + " cannot be resolved");
-        output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
-        serv->modify_handler(fd, EPOLLOUT);
-        return;
-    }
-
-    for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
-        Log::d("ips[" + inttostr(i) + "] = " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
-    }
-
-    Log::d("Ip is " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
-
-    CHK2(_client_request_socket, socket(AF_INET, SOCK_STREAM, 0));
-
-    setnonblocking(_client_request_socket);
-
-    struct sockaddr_in addr;
-
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));
-    addr.sin_port = htons(port);
-
-    connect(_client_request_socket, (struct sockaddr *) &addr, sizeof(addr));
-    if (errno != EINPROGRESS) {
-        perror("connect");
-        Log::fatal("connect");
-    }
-
-    serv->queue_to_process([this, flags]() {
-        Log::d("Creating client_request socket fd(" + inttostr(_client_request_socket) + ") for client fd(" +
-               inttostr(fd) +
-               ")");
-        serv->add_handler(_client_request_socket,
-                          new client_handler::client_request_handler(_client_request_socket, serv, this), flags);
-    });
+    serv->add_resolver_task(this, hostname, flags);
 }
 
 void client_handler::client_request_handler::handle(const epoll_event &e) {

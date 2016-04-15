@@ -13,7 +13,6 @@
 #include <execinfo.h>
 #include <unistd.h>
 #include "handler.h"
-//#include <cstdio>
 
 // Macros - exit in any error (eval < 0) case
 #define CHK(eval) if(eval < 0){perror("CHK1"); exit(-1);}

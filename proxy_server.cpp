@@ -5,10 +5,9 @@
 #include "proxy_server.h"
 #include "util.h"
 
-#include <unistd.h>
-#include "handler.h"
+#include <netdb.h>
 
-proxy_server::proxy_server(std::string host, uint16_t port) {
+proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads) {
     proxy_server::port = htons(port);
     proxy_server::host = inet_addr(host.c_str());
 
@@ -44,7 +43,8 @@ proxy_server::proxy_server(std::string host, uint16_t port) {
     CHK(listen(listenerSocket, 10));
     Log::d("Start to listen host");
 
-    add_handler(listenerSocket, new server_handler(listenerSocket, this), EPOLLIN);
+    add_handler(notifier_ = new notifier(this), EPOLLIN);
+    add_handler(new server_handler(listenerSocket, this), EPOLLIN);
 }
 
 void proxy_server::loop() {
@@ -52,8 +52,8 @@ void proxy_server::loop() {
     static struct epoll_event events[TARGET_CONNECTIONS];
     while (1) {
         int epoll_events_count;
-        CHK2(epoll_events_count, epoll_wait(epfd, events, TARGET_CONNECTIONS, DEFAULT_TIMEOUT));
-        //Log::d("Epoll events count: " + inttostr(epoll_events_count));
+        CHK2(epoll_events_count, epoll_wait(epfd, events, TARGET_CONNECTIONS, -1));
+        //Log::d("Epoll events count: " + inttostr(epoll_events_count)); // including notifier_fd
 
         clock_t tStart = clock();
 
@@ -62,18 +62,19 @@ void proxy_server::loop() {
             if ((events[i].events & EPOLLERR) || events[i].events & EPOLLHUP) {
                 close(events[i].data.fd);
             } else {
-                if (handlers[events[i].data.fd]) {
-                    handlers[events[i].data.fd]->handle(events[i]);
+                int efd = events[i].data.fd;
+                if (handlers[efd]) {
+                    handlers[efd]->handle(events[i]);
                 } else {
-                    Log::e("Trying to handle fd(" + inttostr(events[i].data.fd) + ") which was deleted: " + eetostr(events[i]));
+                    Log::e("Trying to handle fd(" + inttostr(efd) + ") which was deleted: " + eetostr(events[i]));
                 }
             }
         }
 
-        for (auto &h : to_process) {
-            h();
+        std::function<void()> to_run_function;
+        while (to_run.peek(to_run_function)) {
+            to_run_function();
         }
-        to_process.clear();
 
         //printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
         //       (double) (clock() - tStart) / CLOCKS_PER_SEC);
@@ -84,33 +85,30 @@ void proxy_server::loop() {
 
 void proxy_server::terminate() {
     for (auto &h : handlers) {
-        if (h) {
-            close(h->fd);
-        }
+        if (h) close(h->fd);
     }
 
     close(listenerSocket);
     close(epfd);
 }
 
-void proxy_server::add_handler(int fd, handler *h, uint events) {
+void proxy_server::add_handler(handler *h, const uint &events) {
     //Log::d("Trying to insert handler to fd " + inttostr(fd));
-    if (handlers.size() <= fd) {
-        handlers.resize((size_t) fd + 1);
+    if (handlers.size() <= h->fd) {
+        handlers.resize((size_t) h->fd + 1);
     }
-    handlers[fd] = h;
-    //Log::d("And now handlers[" + inttostr(fd) + "] = " + (handlers[fd] ? "yes" : "no") + ", handlers.size() " +
-    //       inttostr(handlers.size()));
+    handlers[h->fd] = h;
+
     epoll_event e;
-    e.data.fd = fd;
+    e.data.fd = h->fd;
     e.events = events;
 
-    if (epoll_ctl(this->epfd, EPOLL_CTL_ADD, fd, &e) < 0) {
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, h->fd, &e) < 0) {
         Log::e("Failed to insert handler to epoll [add]");
-        perror(("add_handler (fd=" + inttostr(fd) + ")").c_str());
+        perror(("add_handler (fd=" + inttostr(h->fd) + ")").c_str());
         std::cerr.flush();
     } else {
-        Log::d("Handler was inserted to fd " + inttostr(fd));
+        Log::d("Handler was inserted to fd " + inttostr(h->fd));
     }
 }
 
@@ -154,12 +152,6 @@ void proxy_server::remove_handler(int fd) {
     Log::d("success");
 }
 
-void proxy_server::queue_to_process(std::function<void()> f) {
-    to_process_mutex.lock();
-    to_process.push_back(f);
-    to_process_mutex.unlock();
-}
-
 /* * 1 * 2 * 3 * read-write functions * 3 * 2 * 1 * */
 
 bool proxy_server::write_chunk(const handler &h, buffer &buf) {
@@ -184,16 +176,79 @@ bool proxy_server::write_chunk(const handler &h, buffer &buf) {
     return buf.empty();
 }
 
-bool proxy_server::read_chunk(const handler &h, buffer &buf) {
+bool proxy_server::read_chunk(const handler &h, buffer *buf) {
     ssize_t received;
     if ((received = recv(h.fd, temp_buffer, BUFFER_SIZE, 0)) < 0) {
         perror("read_chunk");
         Log::fatal("fatal in read_chunk");
         //exit(-1);
     }
-    buf.put(temp_buffer, (size_t) received);
+    if (buf != nullptr) {
+        buf->put(temp_buffer, (size_t) received);
+    }
 
     Log::d("read_chunk (" + inttostr((int) received) + "): \n\"" + std::string(temp_buffer, received) + "\"");
 
     return received == 0;
+}
+
+void proxy_server::notify_epoll() {
+    notifier_->notify();
+}
+
+void proxy_server::add_resolver_task(client_handler *h, std::string hostname, const uint &flags) {
+    hostname_resolve_queue.push([this, h, &hostname, flags]() {
+        Log::d("Resolving hostname \"" + hostname + "\"");
+        uint16_t port = 80;
+
+        for (size_t i = 0; i < hostname.length(); i++) {
+            if (hostname[i] == ':') {
+                port = (uint16_t) strtoint(hostname.substr(i + 1));
+                hostname = hostname.substr(0, i);
+                break;
+            }
+        }
+
+        Log::d("hostname is " + hostname + ", port is " + inttostr(port));
+
+        struct hostent *he;
+
+        if ((he = gethostbyname(hostname.c_str())) == 0) {
+            Log::d("hostname " + hostname + " cannot be resolved");
+            to_run.push([this, h]() {
+                h->output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
+                modify_handler(h->fd, EPOLLOUT);
+            });
+            return;
+        }
+
+        for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
+            Log::d("ips[" + inttostr(i) + "] = " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
+        }
+
+        Log::d("Ip is " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
+
+        to_run.push([h, he, port, this, flags]() {
+            CHK2(h->_client_request_socket, socket(AF_INET, SOCK_STREAM, 0));
+
+            setnonblocking(h->_client_request_socket);
+
+            struct sockaddr_in addr;
+
+            addr.sin_family = AF_INET;
+            addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));
+            addr.sin_port = htons(port);
+
+            connect(h->_client_request_socket, (struct sockaddr *) &addr, sizeof(addr));
+            if (errno != EINPROGRESS) {
+                perror("connect");
+                Log::fatal("connect");
+            }
+
+            Log::d("Creating client_request socket fd(" + inttostr(h->_client_request_socket) + ") for client fd(" +
+                   inttostr(h->fd) +
+                   ")");
+            add_handler(new client_handler::client_request_handler(h->_client_request_socket, this, h), flags);
+        });
+    });
 }

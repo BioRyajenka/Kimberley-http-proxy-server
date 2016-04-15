@@ -11,13 +11,19 @@
 #include "util.h"
 #include "proxy_server.h"
 #include "buffer.h"
+#include <sys/signalfd.h>
+#include <signal.h>
 
 class handler {
-public:
+    friend class proxy_server;
+
+    friend class client_handler;
+
+protected:
     int fd;
     proxy_server *serv;
 public:
-    virtual void handle(const epoll_event&) = 0;
+    virtual void handle(const epoll_event &) = 0;
 
     virtual void disconnect() const {
         std::cout << "disconnecting fd(" << fd << ")" << "\n";
@@ -26,7 +32,39 @@ public:
     }
 };
 
+class notifier : public handler {
+public:
+    notifier(proxy_server *serv) {
+        main_thread = pthread_self();
+        sigset_t sigmask;
+        sigemptyset(&sigmask);
+        sigaddset(&sigmask, SIGUSR1);
+
+        sigprocmask(SIG_BLOCK, &sigmask, NULL);
+
+        fd = signalfd(-1, &sigmask, 0);
+    }
+
+    void handle(const epoll_event &) {
+        //just to clear it out
+
+    }
+
+    void notify() {
+        pthread_kill(main_thread, SIGUSR1);
+    }
+
+    void disconnect() const {
+        handler::disconnect();
+    }
+
+private:
+    pthread_t main_thread;
+};
+
 class client_handler : public handler {
+    friend class proxy_server;
+
 public:
     client_handler(int sock, proxy_server *serv) {
         this->fd = sock;
@@ -35,7 +73,7 @@ public:
         message_type = NOT_EVALUATED;
     }
 
-    void handle(const epoll_event&);
+    void handle(const epoll_event &);
 
 private:
     buffer input_buffer;
@@ -62,7 +100,9 @@ private:
     }
 
     class client_request_handler : public handler {
-    public:
+        friend class proxy_server;
+
+    protected:
         client_request_handler(int sock, proxy_server *serv, client_handler *clh) {
             this->fd = sock;
             this->serv = serv;
@@ -71,7 +111,7 @@ private:
             clh->clrh = this;
         }
 
-        void handle(const epoll_event&);
+        void handle(const epoll_event &);
 
         void disconnect() const {
             clh->clrh = 0;
@@ -84,6 +124,7 @@ private:
 };
 
 class server_handler : public handler {
+    friend class proxy_server;
 public:
     //TODO: inherit constructors
     server_handler(int sock, proxy_server *serv) {
@@ -91,7 +132,7 @@ public:
         this->serv = serv;
     }
 
-    void handle(const epoll_event&);
+    void handle(const epoll_event &);
 };
 
 #endif //KIMBERLY_HANDLER_H
