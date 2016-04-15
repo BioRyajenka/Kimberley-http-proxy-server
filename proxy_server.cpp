@@ -3,6 +3,7 @@
 //
 
 #include "proxy_server.h"
+#include "handler.h"
 #include "util.h"
 
 #include <netdb.h>
@@ -20,15 +21,24 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
     Log::d("Server host is " + std::string(inet_ntoa(antelope)) + ", port is "
            + inttostr(ntohs(proxy_server::port)));
 
-    CHK2(listenerSocket, socket(AF_INET, SOCK_STREAM, 0));
+    if ((listenerSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("socket");
+        Log::fatal("fatal");
+    }
 
     int enable = 1;
-    CHK(setsockopt(listenerSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)));
+    if (setsockopt(listenerSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
+        perror("setsockopt");
+        Log::fatal("fatal");
+    }
 
     Log::d("Main listener(fd=" + inttostr(listenerSocket) + ") created!");
     //setnonblocking(listenerSocket);
 
-    CHK2(epfd, epoll_create(TARGET_CONNECTIONS));
+    if ((epfd = epoll_create(TARGET_CONNECTIONS)) < 0) {
+        perror("epoll_create");
+        Log::fatal("fatal");
+    }
     Log::d("Epoll(fd=" + inttostr(epfd) + ") created!");
 
 
@@ -37,23 +47,42 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
     addr.sin_addr.s_addr = proxy_server::host;
     addr.sin_port = proxy_server::port;
 
-    CHK(bind(listenerSocket, (struct sockaddr *) &addr, sizeof(addr)));
+    if (bind(listenerSocket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        perror("bind");
+        Log::fatal("fatal");
+    }
     Log::d("Listener binded to host");
 
-    CHK(listen(listenerSocket, 10));
+    if (listen(listenerSocket, 10) < 0) {
+        perror("listen");
+        Log::fatal("fatal");
+    }
     Log::d("Start to listen host");
 
-    add_handler(notifier_ = new notifier(this), EPOLLIN);
+    //add_handler(notifier_ = new notifier(this), EPOLLIN);
     add_handler(new server_handler(listenerSocket, this), EPOLLIN);
+
+    for (int i = 0; i < resolver_threads; i++) {
+        hostname_resolver(this).start();
+    }
 }
 
 void proxy_server::loop() {
     Log::d("Start looping");
     static struct epoll_event events[TARGET_CONNECTIONS];
     while (1) {
+        Log::d("pre_epoll_wait");
+
         int epoll_events_count;
-        CHK2(epoll_events_count, epoll_wait(epfd, events, TARGET_CONNECTIONS, -1));
+        if ((epoll_events_count = epoll_wait(epfd, events, TARGET_CONNECTIONS, -1)) < 0) {
+            if (errno != EINTR) {
+                perror("epoll_wait");
+                Log::fatal("fatal");
+            }
+        }
         //Log::d("Epoll events count: " + inttostr(epoll_events_count)); // including notifier_fd
+
+        Log::d("after_epoll_wait");
 
         clock_t tStart = clock();
 
@@ -70,6 +99,8 @@ void proxy_server::loop() {
                 }
             }
         }
+
+        Log::d("before to_run_function");
 
         std::function<void()> to_run_function;
         while (to_run.peek(to_run_function)) {
@@ -193,62 +224,65 @@ bool proxy_server::read_chunk(const handler &h, buffer *buf) {
 }
 
 void proxy_server::notify_epoll() {
-    notifier_->notify();
+    //notifier_->notify();
 }
 
 void proxy_server::add_resolver_task(client_handler *h, std::string hostname, const uint &flags) {
-    hostname_resolve_queue.push([this, h, &hostname, flags]() {
-        Log::d("Resolving hostname \"" + hostname + "\"");
-        uint16_t port = 80;
-
-        for (size_t i = 0; i < hostname.length(); i++) {
-            if (hostname[i] == ':') {
-                port = (uint16_t) strtoint(hostname.substr(i + 1));
-                hostname = hostname.substr(0, i);
-                break;
-            }
-        }
-
-        Log::d("hostname is " + hostname + ", port is " + inttostr(port));
-
-        struct hostent *he;
-
-        if ((he = gethostbyname(hostname.c_str())) == 0) {
-            Log::d("hostname " + hostname + " cannot be resolved");
-            to_run.push([this, h]() {
-                h->output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
-                modify_handler(h->fd, EPOLLOUT);
-            });
-            return;
-        }
-
-        for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
-            Log::d("ips[" + inttostr(i) + "] = " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
-        }
-
-        Log::d("Ip is " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
-
-        to_run.push([h, he, port, this, flags]() {
-            CHK2(h->_client_request_socket, socket(AF_INET, SOCK_STREAM, 0));
-
-            setnonblocking(h->_client_request_socket);
-
-            struct sockaddr_in addr;
-
-            addr.sin_family = AF_INET;
-            addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));
-            addr.sin_port = htons(port);
-
-            connect(h->_client_request_socket, (struct sockaddr *) &addr, sizeof(addr));
-            if (errno != EINPROGRESS) {
-                perror("connect");
-                Log::fatal("connect");
-            }
-
-            Log::d("Creating client_request socket fd(" + inttostr(h->_client_request_socket) + ") for client fd(" +
-                   inttostr(h->fd) +
-                   ")");
-            add_handler(new client_handler::client_request_handler(h->_client_request_socket, this, h), flags);
-        });
-    });
+    Log::d("adding number");
+    hostname_resolve_queue.push(5);
+    //hostname_resolve_queue.push([this, h, hostname, flags]() {
+    //});
+//        Log::d("Resolving hostname \"" + hostname + "\"");
+//        uint16_t port = 80;
+//
+//        ulong pos = hostname.find(":");
+//        std::string new_hostname = hostname.substr(0, pos);
+//        if (pos != std::string::npos) {
+//            port = (uint16_t) strtoint(hostname.substr(pos + 1));
+//        }
+//
+//        Log::d("hostname is " + new_hostname + ", port is " + inttostr(port));
+//
+//        struct hostent *he;
+//
+//        if ((he = gethostbyname(new_hostname.c_str())) == 0) {
+//            Log::d("hostname " + new_hostname + " cannot be resolved");
+//            to_run.push([this, h]() {
+//                h->output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
+//                modify_handler(h->fd, EPOLLOUT);
+//            });
+//            return;
+//        }
+//
+//        for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
+//            Log::d("ips[" + inttostr(i) + "] = " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
+//        }
+//
+//        Log::d("Ip is " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
+//
+//        to_run.push([h, he, port, this, flags]() {
+//            if ((h->_client_request_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+//                perror("socket");
+//                Log::fatal("fatal");
+//            }
+//
+//            setnonblocking(h->_client_request_socket);
+//
+//            struct sockaddr_in addr;
+//
+//            addr.sin_family = AF_INET;
+//            addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));
+//            addr.sin_port = htons(port);
+//
+//            connect(h->_client_request_socket, (struct sockaddr *) &addr, sizeof(addr));
+//            if (errno != EINPROGRESS) {
+//                perror("connect");
+//                Log::fatal("connect");
+//            }
+//
+//            Log::d("Creating client_request socket fd(" + inttostr(h->_client_request_socket) + ") for client fd(" +
+//                   inttostr(h->fd) + ")");
+//            add_handler(new client_handler::client_request_handler(h->_client_request_socket, this, h), flags);
+//        });
+    //});
 }

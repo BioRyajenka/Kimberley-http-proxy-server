@@ -6,7 +6,9 @@
 #define KIMBERLY_HOSTNAME_RESOLVER_H
 
 #include <pthread.h>
-#include "handler.h"
+//#include "proxy_server.h"
+
+class proxy_server;
 
 class hostname_resolver {
 public:
@@ -15,11 +17,12 @@ public:
     void start();
 
 private:
-    pthread_t thread;
     proxy_server *serv;
     int id;
 
     static int free_id;
+
+    std::thread *thread;
 };
 
 #endif //KIMBERLY_HOSTNAME_RESOLVER_H

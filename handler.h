@@ -34,24 +34,41 @@ public:
 
 class notifier : public handler {
 public:
+    int read_pipe, write_pipe;
     notifier(proxy_server *serv) {
-        main_thread = pthread_self();
-        sigset_t sigmask;
-        sigemptyset(&sigmask);
-        sigaddset(&sigmask, SIGUSR1);
+        int pipefds[2] = {};
+        epoll_event ev = {};
+        pipe(pipefds);
+        read_pipe = pipefds[0];
+        write_pipe = pipefds[1];
 
-        sigprocmask(SIG_BLOCK, &sigmask, NULL);
+        Log::d("write_pipe is " + inttostr(write_pipe) + ", read_pipe is " + inttostr(read_pipe));
 
-        fd = signalfd(-1, &sigmask, 0);
+        // make read-end non-blocking
+        int flags = fcntl(read_pipe, F_GETFL, 0);
+        fcntl(write_pipe, F_SETFL, flags|O_NONBLOCK);
+
+        // add the read end to the epoll
+        fd = read_pipe;
+
+        Log::d("write_pipe2 is " + inttostr(write_pipe));
     }
 
     void handle(const epoll_event &) {
-        //just to clear it out
-
+        int result;
+        char ch;
+        Log::d("reading from fd " + inttostr(read_pipe));
+        //read_pipe = 5;
+        result = read(read_pipe, &ch, 1);
     }
 
     void notify() {
-        pthread_kill(main_thread, SIGUSR1);
+        return;
+        Log::d("notifying to fd " + inttostr(write_pipe));
+        char ch = 'x';
+        write_pipe = 6;
+        write(write_pipe, &ch, 1);
+        Log::d("successfull notifying");
     }
 
     void disconnect() const {
@@ -59,7 +76,7 @@ public:
     }
 
 private:
-    pthread_t main_thread;
+
 };
 
 class client_handler : public handler {

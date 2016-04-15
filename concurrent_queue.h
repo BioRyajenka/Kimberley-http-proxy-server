@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include "util.h"
 
 template<typename T>
 class concurrent_queue {
@@ -21,26 +22,41 @@ public:
 
     // it seems that you should user peek() OR pop() function only. Otherwise there concurrent error will occur
     bool peek(T &res) {
+        return false;
+        Log::d("okay, peek");
         std::unique_lock<std::mutex> mlock(mutex);
+        Log::d("pp1");
         if (queue.empty()) {
+            Log::d("pp2");
             return false;
         }
+        Log::d("pp3");
         res = queue.front();
+        Log::d("pp4");
         queue.pop();
+        Log::d("pp5");
         return true;
     }
 
     T pop() {
+        Log::d("okay, popping");
         std::unique_lock<std::mutex> mlock(mutex);
+        Log::d("cp1");
         while (queue.empty()) {
+            Log::d("cp2");
             cond.wait(mlock);
+            Log::d("cp3");
         }
+        Log::d("cp4");
         auto item = queue.front();
+        Log::d("cp5");
         queue.pop();
+        Log::d("cp6, " + inttostr((int) item));
         return item;
     }
 
     void push(const T &item) {
+        Log::d("pushing");
         std::unique_lock<std::mutex> mlock(mutex);
         queue.push(item);
         mlock.unlock();

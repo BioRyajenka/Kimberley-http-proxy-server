@@ -12,13 +12,7 @@
 #include <stdexcept>
 #include <execinfo.h>
 #include <unistd.h>
-#include "handler.h"
-
-// Macros - exit in any error (eval < 0) case
-#define CHK(eval) if(eval < 0){perror("CHK1"); exit(-1);}
-
-// Macros - same as above, but save the result(res) of expression(eval)
-#define CHK2(res, eval) if((res = eval) < 0){perror("CHK2"); exit(-1);}
+//#include "handler.h"
 
 int strtoint(std::string);
 
@@ -54,12 +48,14 @@ private:
         fflush(stdout);
         fflush(stderr);
         std::cerr.flush();
+        std::cout.flush();
         for (std::ostream *o : targets) {
             o->flush();
             (*o) << result_message;
             o->flush();
         }
         std::cerr.flush();
+        std::cout.flush();
         fflush(stdout);
         fflush(stderr);
     }
@@ -94,15 +90,18 @@ public:
     }
 
     static void print_stack_trace(int depth) {
+        fflush(stdout);
+        fflush(stderr);
+
         void *trace[depth];
         int trace_size = backtrace(trace, depth);
 
         //trace[1] = (void *) ctx.eip;
         char **messages = backtrace_symbols(trace, trace_size);
         /* skip first stack frame (points here) */
-        printf("[bt] Execution path:\n");
+        printf("Execution path:\n");
         for (int i = 1; i < trace_size; ++i) {
-            printf("[bt] #%d %s\n", i, messages[i]);
+            //printf("[bt] #%d %s\n", i, messages[i]);
 
             /* find first occurence of '(' or ' ' in message[i] and assume
              * everything before that is the file name. (Don't go beyond 0 though
@@ -118,7 +117,7 @@ public:
             system(syscom);
         }
 
-
+        fflush(stdout);
         fflush(stderr);
     }
 };

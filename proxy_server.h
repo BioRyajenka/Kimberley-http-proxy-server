@@ -12,6 +12,8 @@
 #include "buffer.h"
 #include "concurrent_queue.h"
 
+#include "hostname_resolver.h"
+
 class handler;
 
 class client_handler;
@@ -21,9 +23,11 @@ class notifier;
 class proxy_server {
 #define BUFFER_SIZE 1024
 #define TARGET_CONNECTIONS 10000
-#define DEFAULT_RESOLVER_THREADS 100
+#define DEFAULT_RESOLVER_THREADS 1
 
     friend class handler;
+
+    friend class notifier;
 
     friend class client_handler;
 
@@ -63,7 +67,7 @@ private:
     int epfd;//main epoll
 
     std::vector<handler *> handlers;
-    concurrent_queue<std::function<void()>> hostname_resolve_queue;
+    concurrent_queue<int> hostname_resolve_queue;
     concurrent_queue<std::function<void()>> to_run;
 
     char temp_buffer[BUFFER_SIZE];

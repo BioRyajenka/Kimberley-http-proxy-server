@@ -79,7 +79,10 @@ std::string eetostr(const epoll_event &ev) {
 
 int setnonblocking(const int &sockfd) {
     Log::d("Making fd(" + inttostr(sockfd) + ") non-blocking");
-    CHK(fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFD, 0) | O_NONBLOCK));
+    if (fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFD, 0) | O_NONBLOCK) < 0) {
+        perror("fcntl");
+        Log::fatal("fatal");
+    }
     return 0;
 }
 

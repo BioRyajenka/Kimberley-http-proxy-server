@@ -7,13 +7,18 @@
 #include <stdlib.h>
 #include "hostname_resolver.h"
 #include "util.h"
+#include "handler.h"
 
 void hostname_resolver::start() {
-    std::thread t((std::function<void()>)([this]() -> void {
-        auto func = serv->hostname_resolve_queue.pop();
-        func();
+    thread = new std::thread((std::function<void()>)([this]() -> void {
+        while (1) {
+            Log::d(std::string("serv is ") + (serv == nullptr ? "null" : "not null"));
+            auto func = serv->hostname_resolve_queue.pop();
+            Log::d("VALUE IS " + inttostr(func));
+            //func();
 
-        serv->notify_epoll();
+            //serv->notify_epoll();
+        }
     }));
 }
 

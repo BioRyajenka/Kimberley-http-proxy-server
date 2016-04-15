@@ -6,6 +6,9 @@ Known issues:
 2. [Trying to handle fd which was deleted]
 
 TODO2: 
+19) gracefully termination of child threads
+20) gracefully termination of all the program
+
 1) explicit, extern words
 2) remove CHK
 3) anonimous namespaces?

@@ -6,28 +6,25 @@
 #include "util.h"
 
 void signalHandler(int signum) {
-    Log::d("hello :)");
+    Log::d("Error code: " + inttostr(signum));
+    Log::print_stack_trace(10);
     exit(signum);
 }
 
-void signalHandler2(int signum) {
-    Log::e("Segmentation fault");
-    Log::print_stack_trace(10);
-    exit(signum);
+void watch_signal(int sig) {
+    struct sigaction action;
+    memset(&action, 0, sizeof(struct sigaction));
+    action.sa_handler = signalHandler;
+    sigaction(sig, &action, NULL);
 }
 
 int main() {
     Log::add_output(&(std::cout));
     Log::set_level(2);
 
-    struct sigaction action;
-    memset(&action, 0, sizeof(struct sigaction));
-    action.sa_handler = signalHandler;
-    sigaction(SIGQUIT, &action, NULL);
-
-    memset(&action, 0, sizeof(struct sigaction));
-    action.sa_handler = signalHandler2;
-    sigaction(SIGSEGV, &action, NULL);
+    watch_signal(SIGQUIT);
+    watch_signal(SIGABRT);
+    watch_signal(SIGSEGV);
 
     proxy_server s("127.0.0.1", 4500);
     try {

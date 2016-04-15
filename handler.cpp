@@ -128,12 +128,15 @@ void client_handler::handle(const epoll_event &e) {
                         // modifying status line
                         size_t from = data.find(hostname) + hostname.length();
 
+                        Log::d("from is " + inttostr(from) + ", hostname is " + hostname);
+
                         data = "GET " +
                                input_buffer.string_data().substr(from, input_buffer.string_data().length() - from);
                         input_buffer.clear();
                         input_buffer.put(data.c_str(), data.length());
 
                         Log::d("new query is: \"\n" + input_buffer.string_data() + "\"");
+                        Log::d("First line is \"" + input_buffer.string_data().substr(0, input_buffer.string_data().find("\r\n")) + "\"");
                     }
 
                     resolve_host_ip(hostname, EPOLLOUT);
