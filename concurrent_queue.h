@@ -5,6 +5,12 @@
 #ifndef KIMBERLY_COCURRENT_QUEUE_H
 #define KIMBERLY_COCURRENT_QUEUE_H
 
+
+#include <memory>
+#include <chrono>
+#include <cassert>
+#include <iostream>
+
 #include <queue>
 #include <thread>
 #include <mutex>
@@ -22,12 +28,11 @@ public:
 
     // it seems that you should user peek() OR pop() function only. Otherwise there concurrent error will occur
     bool peek(T &res) {
-        return false;
-        Log::d("okay, peek");
+        //Log::d("okay, peek");
         std::unique_lock<std::mutex> mlock(mutex);
-        Log::d("pp1");
+        //Log::d("pp1");
         if (queue.empty()) {
-            Log::d("pp2");
+            //Log::d("pp2");
             return false;
         }
         Log::d("pp3");
@@ -39,28 +44,26 @@ public:
     }
 
     T pop() {
-        Log::d("okay, popping");
-        std::unique_lock<std::mutex> mlock(mutex);
+        Log::d("popping");
+        std::unique_lock<std::mutex> lk(mutex);
         Log::d("cp1");
-        while (queue.empty()) {
-            Log::d("cp2");
-            cond.wait(mlock);
-            Log::d("cp3");
-        }
-        Log::d("cp4");
-        auto item = queue.front();
-        Log::d("cp5");
+        cond.wait(lk, [this] { return !queue.empty(); });
+        Log::d("cp2");
+        auto value(queue.front());
+        Log::d("cp3");
         queue.pop();
-        Log::d("cp6, " + inttostr((int) item));
-        return item;
+        Log::d("cp4");
+        return value;
     }
 
     void push(const T &item) {
         Log::d("pushing");
-        std::unique_lock<std::mutex> mlock(mutex);
+        std::lock_guard<std::mutex> lk(mutex);
+        Log::d("xx1");
         queue.push(item);
-        mlock.unlock();
+        Log::d("xx2");
         cond.notify_one();
+        Log::d("xx3");
     }
 
 private:

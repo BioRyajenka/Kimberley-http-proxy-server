@@ -19,7 +19,7 @@ void watch_signal(int sig) {
 }
 
 int main() {
-    Log::add_output(&(std::cout));
+    Log::add_output(&(std::cerr));
     Log::set_level(2);
 
     watch_signal(SIGQUIT);

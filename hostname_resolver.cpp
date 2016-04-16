@@ -10,14 +10,16 @@
 #include "handler.h"
 
 void hostname_resolver::start() {
-    thread = new std::thread((std::function<void()>)([this]() -> void {
+    thread = new std::thread((std::function<void()>) ([this]() -> void {
+        Log::d("resolver thread id: " + inttostr((int) pthread_self()));
         while (1) {
-            Log::d(std::string("serv is ") + (serv == nullptr ? "null" : "not null"));
+            //Log::d(std::string("serv is ") + (serv == nullptr ? "null" : "not null"));
             auto func = serv->hostname_resolve_queue.pop();
-            Log::d("VALUE IS " + inttostr(func));
-            //func();
+            //Log::d("VALUE IS " + inttostr(func));
+            func();
+            Log::d("function successfully executed");
 
-            //serv->notify_epoll();
+            serv->notify_epoll();
         }
     }));
 }

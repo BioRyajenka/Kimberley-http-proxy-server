@@ -30,11 +30,13 @@ void server_handler::handle(const epoll_event &) {
 bool client_handler::read_message(const handler &h, buffer &buf) {
     int plen = buf.length();
 
+    Log::d("read_message1");
     if (serv->read_chunk(h, &buf)) {
         Log::d("fd(" + inttostr(h.fd) + ") asked for disconnection");
         disconnect();
         return false;
     }
+    Log::d("read_message2");
     if (message_type == NOT_EVALUATED) {
         // recalc message len
         int lb = find_double_line_break(buf.string_data(), plen);

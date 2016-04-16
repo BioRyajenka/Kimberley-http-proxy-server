@@ -74,7 +74,6 @@ std::string eetostr(const epoll_event &ev) {
         result += " EPOLLONESHOT ";
 
     return result;
-
 }
 
 int setnonblocking(const int &sockfd) {
@@ -88,6 +87,7 @@ int setnonblocking(const int &sockfd) {
 
 int Log::level = 0;
 std::vector<std::ostream *> Log::targets;
+std::mutex Log::mutex;
 
 bool is_break_char(char c) {
     return c == '\n' || c == '\r';

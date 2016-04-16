@@ -67,10 +67,10 @@ private:
     int epfd;//main epoll
 
     std::vector<handler *> handlers;
-    concurrent_queue<int> hostname_resolve_queue;
+    concurrent_queue<std::function<void()>> hostname_resolve_queue;
     concurrent_queue<std::function<void()>> to_run;
 
-    char temp_buffer[BUFFER_SIZE];
+    char temp_buffer[BUFFER_SIZE + 1];
 
     notifier *notifier_;
 };

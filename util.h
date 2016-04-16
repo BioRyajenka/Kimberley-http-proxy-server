@@ -12,7 +12,7 @@
 #include <stdexcept>
 #include <execinfo.h>
 #include <unistd.h>
-//#include "handler.h"
+#include <mutex>
 
 int strtoint(std::string);
 
@@ -42,16 +42,19 @@ private:
         return buf;
     }
 
-    static void print(std::string prefix, std::string message) {
-        std::string result_message = get_time() + " [" + prefix + "]: " + message + "\n";
+    static std::mutex mutex;
 
+    static void print(std::string prefix, std::string message) {
+        std::string result_message = get_time() + " [" + prefix + "]: " + message;
+
+        std::unique_lock<std::mutex> lk(mutex);
         fflush(stdout);
         fflush(stderr);
         std::cerr.flush();
         std::cout.flush();
         for (std::ostream *o : targets) {
             o->flush();
-            (*o) << result_message;
+            (*o) << result_message << std::endl;
             o->flush();
         }
         std::cerr.flush();
@@ -99,7 +102,7 @@ public:
         //trace[1] = (void *) ctx.eip;
         char **messages = backtrace_symbols(trace, trace_size);
         /* skip first stack frame (points here) */
-        printf("Execution path:\n");
+        printf("Execution path [thread: %d]:\n", (int) pthread_self());
         for (int i = 1; i < trace_size; ++i) {
             //printf("[bt] #%d %s\n", i, messages[i]);
 

@@ -34,10 +34,11 @@ public:
 
 class notifier : public handler {
 public:
+    int pipefds[2];
+
     int read_pipe, write_pipe;
     notifier(proxy_server *serv) {
-        int pipefds[2] = {};
-        epoll_event ev = {};
+        pipefds[2] = {};
         pipe(pipefds);
         read_pipe = pipefds[0];
         write_pipe = pipefds[1];
@@ -51,6 +52,12 @@ public:
         // add the read end to the epoll
         fd = read_pipe;
 
+        std::thread t((std::function<void()>)([this](){
+            //Log::d("from another thread: " + inttostr(write_pipe));
+            std::cout << "from another thread: " << write_pipe << std::endl;
+        }));
+        t.join();
+
         Log::d("write_pipe2 is " + inttostr(write_pipe));
     }
 
@@ -63,10 +70,15 @@ public:
     }
 
     void notify() {
-        return;
-        Log::d("notifying to fd " + inttostr(write_pipe));
-        char ch = 'x';
+        Log::d("pre-notifying");
         write_pipe = 6;
+        std::cout << "cout: " << write_pipe << "\n";
+        Log::d("notifying to fd " + inttostr(write_pipe));
+        if (write_pipe != 6) {
+            Log::e("WRITE PIPE NE RAVNO SHESTI!");
+        }
+        char ch = 'x';
+        //write_pipe = 6;
         write(write_pipe, &ch, 1);
         Log::d("successfull notifying");
     }
@@ -101,7 +113,6 @@ private:
         NOT_EVALUATED, WITHOUT_BODY, VIA_CONTENT_LENGTH, VIA_TRANSFER_ENCODING, PRE_HTTPS_MODE, HTTPS_MODE
     } message_type;
 
-    int _client_request_socket;
     handler *clrh = 0;
 
     void resolve_host_ip(std::string, const uint &flags);
