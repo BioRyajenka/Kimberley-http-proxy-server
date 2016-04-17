@@ -3,6 +3,7 @@
 //
 
 #include "handler.h"
+#include "hostname_resolver.h"
 #include <cassert>
 #include <netdb.h>
 
@@ -23,17 +24,19 @@ void server_handler::handle(const epoll_event &) {
     ev.events = EPOLLIN;
 
     Log::d("Client connected: " + std::string(inet_ntoa(client_addr.sin_addr)) + ":" + inttostr(client_addr.sin_port));
-    serv->add_handler(client, new client_handler(client, serv), EPOLLIN);
+    serv->add_handler(new client_handler(client, serv), EPOLLIN);
 }
 
 bool client_handler::read_message(const handler &h, buffer &buf) {
     int plen = buf.length();
 
-    if (serv->read_chunk(h, buf)) {
+    Log::d("read_message1");
+    if (serv->read_chunk(h, &buf)) {
         Log::d("fd(" + inttostr(h.fd) + ") asked for disconnection");
         disconnect();
         return false;
     }
+    Log::d("read_message2");
     if (message_type == NOT_EVALUATED) {
         // recalc message len
         int lb = find_double_line_break(buf.string_data(), plen);
@@ -127,12 +130,15 @@ void client_handler::handle(const epoll_event &e) {
                         // modifying status line
                         size_t from = data.find(hostname) + hostname.length();
 
+                        Log::d("from is " + inttostr(from) + ", hostname is " + hostname);
+
                         data = "GET " +
                                input_buffer.string_data().substr(from, input_buffer.string_data().length() - from);
                         input_buffer.clear();
                         input_buffer.put(data.c_str(), data.length());
 
                         Log::d("new query is: \"\n" + input_buffer.string_data() + "\"");
+                        Log::d("First line is \"" + input_buffer.string_data().substr(0, input_buffer.string_data().find("\r\n")) + "\"");
                     }
 
                     resolve_host_ip(hostname, EPOLLOUT);
@@ -146,65 +152,18 @@ void client_handler::handle(const epoll_event &e) {
     }
 }
 
-void client_handler::resolve_host_ip(std::string hostname, const uint &flags) {
-    Log::d("Resolving hostname \"" + hostname + "\"");
-    uint16_t port = 80;
-
-    for (size_t i = 0; i < hostname.length(); i++) {
-        if (hostname[i] == ':') {
-            port = (uint16_t) strtoint(hostname.substr(i + 1));
-            hostname = hostname.substr(0, i);
-            break;
-        }
-    }
-
-    Log::d("hostname is " + hostname + ", port is " + inttostr(port));
-
-    struct hostent *he;
-
-    if ((he = gethostbyname(hostname.c_str())) == 0) {
-        Log::d("hostname " + hostname + " cannot be resolved");
-        output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
-        serv->modify_handler(fd, EPOLLOUT);
-        return;
-    }
-
-    for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
-        Log::d("ips[" + inttostr(i) + "] = " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
-    }
-
-    Log::d("Ip is " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
-
-    CHK2(_client_request_socket, socket(AF_INET, SOCK_STREAM, 0));
-
-    setnonblocking(_client_request_socket);
-
-    struct sockaddr_in addr;
-
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));
-    addr.sin_port = htons(port);
-
-    connect(_client_request_socket, (struct sockaddr *) &addr, sizeof(addr));
-    if (errno != EINPROGRESS) {
-        perror("connect");
-        Log::fatal("connect");
-    }
-
-    serv->queue_to_process([this, flags]() {
-        Log::d("Creating client_request socket fd(" + inttostr(_client_request_socket) + ") for client fd(" +
-               inttostr(fd) +
-               ")");
-        serv->add_handler(_client_request_socket,
-                          new client_handler::client_request_handler(_client_request_socket, serv, this), flags);
-    });
+void client_handler::resolve_host_ip(std::string hostname, uint flags) {
+    Log::d("adding resolver task with flags " + inttostr((int) flags));
+    serv->add_resolver_task(this, hostname, flags);
 }
 
 void client_handler::client_request_handler::handle(const epoll_event &e) {
-    if (!(e.events & EPOLLOUT) || (e.events & EPOLLIN) || !clh->input_buffer.empty()) {
-        Log::d("Client request handler: " + eetostr(e));
+    if (!deleteme) {
+        Log::d("Client request handler: " + eetostr(e) + ", inputbuffer: " + (clh->input_buffer.empty() ? "empty" : "not empty"));
+        deleteme = true;
     }
     if (e.events & EPOLLOUT) {
+        if (!clh->input_buffer.empty()) deleteme = false;
         if (serv->write_chunk(*this, clh->input_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("Finished resending query to host");
             serv->modify_handler(fd, EPOLLIN);
@@ -216,6 +175,7 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
     }
 
     if (e.events & EPOLLIN) {
+        deleteme = false;
         if (clh->read_message(*this, clh->output_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("It seems that all message was received.");
             disconnect(); // only me

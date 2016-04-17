@@ -12,14 +12,7 @@
 #include <stdexcept>
 #include <execinfo.h>
 #include <unistd.h>
-#include "handler.h"
-//#include <cstdio>
-
-// Macros - exit in any error (eval < 0) case
-#define CHK(eval) if(eval < 0){perror("CHK1"); exit(-1);}
-
-// Macros - same as above, but save the result(res) of expression(eval)
-#define CHK2(res, eval) if((res = eval) < 0){perror("CHK2"); exit(-1);}
+#include <mutex>
 
 int strtoint(std::string);
 
@@ -28,6 +21,8 @@ std::string chartostr(const char &);
 std::string inttostr(int);
 
 int hextoint(const std::string &);
+
+std::string eeflagstostr(const int &flags);
 
 std::string eetostr(const epoll_event &);
 
@@ -49,18 +44,23 @@ private:
         return buf;
     }
 
-    static void print(std::string prefix, std::string message) {
-        std::string result_message = get_time() + " [" + prefix + "]: " + message + "\n";
+    static std::mutex mutex;
 
+    static void print(std::string prefix, std::string message) {
+        std::string result_message = get_time() + " [" + prefix + "]: " + message;
+
+        std::unique_lock<std::mutex> lk(mutex);
         fflush(stdout);
         fflush(stderr);
         std::cerr.flush();
+        std::cout.flush();
         for (std::ostream *o : targets) {
             o->flush();
-            (*o) << result_message;
+            (*o) << result_message << std::endl;
             o->flush();
         }
         std::cerr.flush();
+        std::cout.flush();
         fflush(stdout);
         fflush(stderr);
     }
@@ -95,15 +95,18 @@ public:
     }
 
     static void print_stack_trace(int depth) {
+        fflush(stdout);
+        fflush(stderr);
+
         void *trace[depth];
         int trace_size = backtrace(trace, depth);
 
         //trace[1] = (void *) ctx.eip;
         char **messages = backtrace_symbols(trace, trace_size);
         /* skip first stack frame (points here) */
-        printf("[bt] Execution path:\n");
+        printf("Execution path [thread: %d]:\n", (int) pthread_self());
         for (int i = 1; i < trace_size; ++i) {
-            printf("[bt] #%d %s\n", i, messages[i]);
+            //printf("[bt] #%d %s\n", i, messages[i]);
 
             /* find first occurence of '(' or ' ' in message[i] and assume
              * everything before that is the file name. (Don't go beyond 0 though
@@ -119,7 +122,7 @@ public:
             system(syscom);
         }
 
-
+        fflush(stdout);
         fflush(stderr);
     }
 };
