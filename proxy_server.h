@@ -55,7 +55,7 @@ protected:
     // returns true if recv returned 0
     bool read_chunk(const handler &h, buffer *buf);
 
-    void add_resolver_task(client_handler *h, std::string hostname, const uint &flags);
+    void add_resolver_task(client_handler *h, std::string hostname, uint flags);
 
     void notify_epoll();
 

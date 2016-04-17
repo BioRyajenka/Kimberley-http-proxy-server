@@ -145,7 +145,7 @@ void proxy_server::add_handler(handler *h, const uint &events) {
         perror(("add_handler (fd=" + inttostr(h->fd) + ")").c_str());
         std::cerr.flush();
     } else {
-        Log::d("Handler was inserted to fd " + inttostr(h->fd));
+        Log::d("Handler was inserted to fd " + inttostr(h->fd) + " with flags " + eeflagstostr(events));
     }
 }
 
@@ -195,7 +195,7 @@ bool proxy_server::write_chunk(const handler &h, buffer &buf) {
     if (buf.empty()) {
         return false;
     }
-    //Log::d("writing chunk");
+    Log::d("writing chunk: \"\n" + buf.string_data() + "\"");
     //Log::d("(" + inttostr(buf.length()) + "): " + buf.string_data());
     int kkek = buf.length();
 
@@ -231,8 +231,6 @@ bool proxy_server::read_chunk(const handler &h, buffer *buf) {
     std::string s = std::string(temp_buffer, (ulong) received);
     Log::d("read_chunk5: " + s);
 
-    std::cout << received << std::endl;
-
     Log::d("read_chunk6: " + inttostr((int) received));
 
     Log::d("read_chunk (" + inttostr((int) received) + "): \n\"" + s + "\"");
@@ -244,11 +242,10 @@ void proxy_server::notify_epoll() {
     notifier_->notify();
 }
 
-void proxy_server::add_resolver_task(client_handler *h, std::string hostname, const uint &flags) {
-    Log::d("adding number");
+void proxy_server::add_resolver_task(client_handler *h, std::string hostname, uint flags) {
     //hostname_resolve_queue.push(5);
     hostname_resolve_queue.push([this, h, hostname, flags]() {
-        Log::d("Resolving hostname \"" + hostname + "\"");
+        Log::d("RESOLVER: \tResolving hostname \"" + hostname + "\"");
         uint16_t port = 80;
 
         ulong pos = hostname.find(":");
@@ -257,12 +254,12 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, co
             port = (uint16_t) strtoint(hostname.substr(pos + 1));
         }
 
-        Log::d("hostname is " + new_hostname + ", port is " + inttostr(port));
+        Log::d("RESOLVER: \thostname is " + new_hostname + ", port is " + inttostr(port));
 
         struct hostent *he;
 
         if ((he = gethostbyname(new_hostname.c_str())) == 0) {
-            Log::d("hostname " + new_hostname + " cannot be resolved");
+            Log::d("RESOLVER: \thostname " + new_hostname + " cannot be resolved");
             to_run.push([this, h]() {
                 h->output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
                 modify_handler(h->fd, EPOLLOUT);
@@ -271,38 +268,48 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, co
         }
 
         for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
-            Log::d("ips[" + inttostr(i) + "] = " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
+            Log::d("RESOLVER: \tips[" + inttostr(i) + "] = " +
+                   std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
         }
 
-        Log::d("Ip is " + std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
+        Log::d("RESOLVER: \tIp for " + new_hostname + " is " +
+               std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
 
-        to_run.push([h, he, port, this, flags]() {
-            Log::d("doing stuff with host");
-            int client_request_socket;
-            if ((client_request_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-                perror("socket");
-                Log::fatal("fatal");
-            }
 
-            setnonblocking(client_request_socket);
 
-            struct sockaddr_in addr;
 
-            addr.sin_family = AF_INET;
-            addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));
-            addr.sin_port = htons(port);
+        Log::d("RESOLVER: \tdoing stuff with host");
+        int client_request_socket;
+        if ((client_request_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+            perror("socket");
+            Log::fatal("fatal");
+        }
 
-            connect(client_request_socket, (struct sockaddr *) &addr, sizeof(addr));
-            if (errno != EINPROGRESS) {
-                perror("connect");
-                Log::fatal("connect");
-            }
+        setnonblocking(client_request_socket);
+
+        struct sockaddr_in addr;
+
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));
+        addr.sin_port = htons(port);
+
+        if (connect(client_request_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {}
+        if (errno != EINPROGRESS) {
+            perror("connect");
+            Log::fatal("connect");
+        }
+
+
+
+
+        to_run.push([client_request_socket, h, this, flags]() {
+
 
             Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
-                   inttostr(h->fd) + ") with flags " + inttostr(flags));
+                   inttostr(h->fd) + ") with flags " + eeflagstostr(flags) + "; it's buffer is " +
+                   (h->input_buffer.empty() ? "empty" : "not empty"));
             add_handler(new client_handler::client_request_handler(client_request_socket, this, h), flags);
         });
-
-        Log::d("proxy_server.cpp:add_resolver_task");
+        Log::d("RESOLVER: \tproxy_server.cpp:add_resolver_task");
     });
 }

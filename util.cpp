@@ -46,34 +46,21 @@ int hextoint(const std::string &s) {
     return (int) std::stoul("0x" + s, nullptr, 16);
 }
 
-std::string eetostr(const epoll_event &ev) {
-    std::string result = "fd(" + inttostr(ev.data.fd) + "), ev.events:";
-    if (ev.events & EPOLLIN)
+std::string eeflagstostr(const int &flags) {
+    std::string result = "";
+    if (flags & EPOLLIN)
         result += " EPOLLIN ";
-    if (ev.events & EPOLLOUT)
+    if (flags & EPOLLOUT)
         result += " EPOLLOUT ";
-    if (ev.events & EPOLLET)
-        result += " EPOLLET ";
-    if (ev.events & EPOLLPRI)
-        result += " EPOLLPRI ";
-    if (ev.events & EPOLLRDNORM)
-        result += " EPOLLRDNORM ";
-    if (ev.events & EPOLLRDBAND)
-        result += " EPOLLRDBAND ";
-    if (ev.events & EPOLLWRNORM)
-        result += " EPOLLRDNORM ";
-    if (ev.events & EPOLLWRBAND)
-        result += " EPOLLWRBAND ";
-    if (ev.events & EPOLLMSG)
-        result += " EPOLLMSG ";
-    if (ev.events & EPOLLERR)
+    if (flags & EPOLLERR)
         result += " EPOLLERR ";
-    if (ev.events & EPOLLHUP)
+    if (flags & EPOLLHUP)
         result += " EPOLLHUP ";
-    if (ev.events & EPOLLONESHOT)
-        result += " EPOLLONESHOT ";
-
     return result;
+}
+
+std::string eetostr(const epoll_event &ev) {
+    return "fd(" + inttostr(ev.data.fd) + "), ev.events:" + eeflagstostr(ev.events);
 }
 
 int setnonblocking(const int &sockfd) {

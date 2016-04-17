@@ -26,9 +26,9 @@ public:
     virtual void handle(const epoll_event &) = 0;
 
     virtual void disconnect() const {
-        std::cout << "disconnecting fd(" << fd << ")" << "\n";
+        Log::d("disconnecting fd(" + inttostr(fd) + ")");
         serv->remove_handler(fd);
-        std::cout << "success disconnecting\n";
+        Log::d("disconnected successful");
     }
 };
 
@@ -52,12 +52,6 @@ public:
         // add the read end to the epoll
         fd = read_pipe;
 
-        std::thread t((std::function<void()>)([this](){
-            //Log::d("from another thread: " + inttostr(write_pipe));
-            std::cout << "from another thread: " << write_pipe << std::endl;
-        }));
-        t.join();
-
         Log::d("write_pipe2 is " + inttostr(write_pipe));
     }
 
@@ -72,7 +66,6 @@ public:
     void notify() {
         Log::d("pre-notifying");
         write_pipe = 6;
-        std::cout << "cout: " << write_pipe << "\n";
         Log::d("notifying to fd " + inttostr(write_pipe));
         if (write_pipe != 6) {
             Log::e("WRITE PIPE NE RAVNO SHESTI!");
@@ -80,7 +73,7 @@ public:
         char ch = 'x';
         //write_pipe = 6;
         write(write_pipe, &ch, 1);
-        Log::d("successfull notifying");
+        Log::d("successful notifying");
     }
 
     void disconnect() const {
@@ -115,7 +108,7 @@ private:
 
     handler *clrh = 0;
 
-    void resolve_host_ip(std::string, const uint &flags);
+    void resolve_host_ip(std::string, uint flags);
 
     // retunrs true if all the message was read
     bool read_message(const handler &h, buffer &buf);
@@ -148,6 +141,8 @@ private:
 
     private:
         client_handler *clh;
+
+        bool deleteme = false;
     };
 };
 

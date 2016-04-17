@@ -17,7 +17,7 @@ void hostname_resolver::start() {
             auto func = serv->hostname_resolve_queue.pop();
             //Log::d("VALUE IS " + inttostr(func));
             func();
-            Log::d("function successfully executed");
+            Log::d("RESOLVER: \tfunction successfully executed");
 
             serv->notify_epoll();
         }

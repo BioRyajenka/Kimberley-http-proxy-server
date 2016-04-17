@@ -152,15 +152,18 @@ void client_handler::handle(const epoll_event &e) {
     }
 }
 
-void client_handler::resolve_host_ip(std::string hostname, const uint &flags) {
+void client_handler::resolve_host_ip(std::string hostname, uint flags) {
+    Log::d("adding resolver task with flags " + inttostr((int) flags));
     serv->add_resolver_task(this, hostname, flags);
 }
 
 void client_handler::client_request_handler::handle(const epoll_event &e) {
-    if (!(e.events & EPOLLOUT) || (e.events & EPOLLIN) || !clh->input_buffer.empty()) {
-        Log::d("Client request handler: " + eetostr(e));
+    if (!deleteme) {
+        Log::d("Client request handler: " + eetostr(e) + ", inputbuffer: " + (clh->input_buffer.empty() ? "empty" : "not empty"));
+        deleteme = true;
     }
     if (e.events & EPOLLOUT) {
+        if (!clh->input_buffer.empty()) deleteme = false;
         if (serv->write_chunk(*this, clh->input_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("Finished resending query to host");
             serv->modify_handler(fd, EPOLLIN);
@@ -172,6 +175,7 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
     }
 
     if (e.events & EPOLLIN) {
+        deleteme = false;
         if (clh->read_message(*this, clh->output_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("It seems that all message was received.");
             disconnect(); // only me

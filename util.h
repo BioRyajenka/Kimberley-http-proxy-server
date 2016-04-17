@@ -22,6 +22,8 @@ std::string inttostr(int);
 
 int hextoint(const std::string &);
 
+std::string eeflagstostr(const int &flags);
+
 std::string eetostr(const epoll_event &);
 
 int setnonblocking(const int &sockfd);
