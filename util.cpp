@@ -4,6 +4,9 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <netdb.h>
+#include <string.h>
+#include <arpa/inet.h>
 #include "util.h"
 
 int strtoint(std::string s) {
@@ -123,9 +126,4 @@ int find_double_line_break(const std::string &s, int from) {
 
 std::string extract_method(const std::string &s) {
     return s.substr(0, s.find(' '));
-}
-
-void set_status_line(std::string &s, const std::string &status_line) {
-    size_t linebreak = s.find("\r\n");
-    s = status_line + s.substr(linebreak, s.length() - linebreak);
 }

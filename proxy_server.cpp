@@ -255,9 +255,16 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, ui
 
         Log::d("RESOLVER: \thostname is " + new_hostname + ", port is " + inttostr(port));
 
-        struct hostent *he;
 
-        if ((he = gethostbyname(new_hostname.c_str())) == 0) {
+        int client_request_socket;
+        struct addrinfo hints, *servinfo, *p;
+
+        memset(&hints, 0, sizeof hints);
+        hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
+        hints.ai_socktype = SOCK_STREAM;
+
+        if (getaddrinfo(new_hostname.c_str(), inttostr(port).c_str(), &hints, &servinfo) != 0) {
+cant_connect:
             Log::d("RESOLVER: \thostname " + new_hostname + " cannot be resolved");
             to_run.push([this, h]() {
                 h->output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
@@ -266,44 +273,34 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, ui
             return;
         }
 
-        for (int i = 0; (struct in_addr **) he->h_addr_list[i] != NULL; i++) {
-            Log::d("RESOLVER: \tips[" + inttostr(i) + "] = " +
-                   std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[i]))));
+// loop through all the results and connect to the first we can
+        for (p = servinfo; p != NULL; p = p->ai_next) {
+            if ((client_request_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+                perror("socket");
+                continue;
+            }
+
+            //setnonblocking(client_request_socket);
+
+            Log::d("trying to connect to smth");
+
+            if (connect(client_request_socket, p->ai_addr, p->ai_addrlen) < 0) {
+                perror("connect");
+                Log::fatal("connect");
+            }
+
+            Log::d("success");
+
+            break; // if we get here, we must have connected successfully
         }
 
-        Log::d("RESOLVER: \tIp for " + new_hostname + " is " +
-               std::string(inet_ntoa(*((struct in_addr *) he->h_addr_list[0]))));
-
-
-
-
-        Log::d("RESOLVER: \tdoing stuff with host");
-        int client_request_socket;
-        if ((client_request_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-            perror("socket");
-            Log::fatal("fatal");
+        if (p == NULL) {
+            goto cant_connect;
         }
 
-        setnonblocking(client_request_socket);
-
-        struct sockaddr_in addr;
-
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = inet_addr(inet_ntoa(*((struct in_addr *) he->h_addr_list[0])));
-        addr.sin_port = htons(port);
-
-        if (connect(client_request_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {}
-        if (errno != EINPROGRESS) {
-            perror("connect");
-            Log::fatal("connect");
-        }
-
-
-
+        freeaddrinfo(servinfo); // all done with this structure
 
         to_run.push([client_request_socket, h, this, flags]() {
-
-
             Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
                    inttostr(h->fd) + ") with flags " + eeflagstostr(flags) + "; it's buffer is " +
                    (h->input_buffer.empty() ? "empty" : "not empty"));

@@ -9,6 +9,7 @@ TODO2:
 2) remove CHK
 3) anonimous namespaces?
 4) const char *const ?!?!?!?!?!!?
+21) **var?
 15) static struct;
 5) static_assert?
 6) make BUFFER_SIZE const

@@ -133,6 +133,4 @@ int find_double_line_break(const std::string &s, int from);
 
 std::string extract_method(const std::string &s);
 
-void set_status_line(std::string &s, const std::string &status_line);
-
 #endif //KIMBERLY_UTIL_H
