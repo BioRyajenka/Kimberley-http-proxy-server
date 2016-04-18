@@ -8,6 +8,27 @@
 
 #include <netdb.h>
 
+proxy_server::~proxy_server() {
+    // if I'll write &h, valgrind will abuse
+    for (auto h : handlers) {
+        if (h) {
+            Log::d("!deleting " + inttostr(h->fd));
+            h->disconnect();
+            delete h;
+        }
+    }
+
+    close(listenerSocket);
+    close(epfd);
+
+    // releasing waiters
+    hostname_resolve_queue.release_waiters();
+
+    for (auto hr : hostname_resolvers) {
+        delete hr;
+    }
+}
+
 proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads) {
     proxy_server::port = htons(port);
     proxy_server::host = inet_addr(host.c_str());
@@ -56,13 +77,15 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
         perror("listen");
         Log::fatal("fatal");
     }
+
     Log::d("Start to listen host");
 
     add_handler(notifier_ = new notifier(this), EPOLLIN);
     add_handler(new server_handler(listenerSocket, this), EPOLLIN);
 
     for (int i = 0; i < resolver_threads; i++) {
-        (new hostname_resolver(this))->start();
+        hostname_resolvers.push_back(new hostname_resolver(this));
+        hostname_resolvers.back()->start();
     }
 
     Log::d("Main thread id: " + inttostr((int) pthread_self()));
@@ -118,16 +141,6 @@ void proxy_server::loop() {
     }
 }
 
-
-void proxy_server::terminate() {
-    for (auto &h : handlers) {
-        if (h) close(h->fd);
-    }
-
-    close(listenerSocket);
-    close(epfd);
-}
-
 void proxy_server::add_handler(handler *h, const uint &events) {
     //Log::d("Trying to insert handler to fd " + inttostr(fd));
     if (handlers.size() <= h->fd) {
@@ -135,14 +148,13 @@ void proxy_server::add_handler(handler *h, const uint &events) {
     }
     handlers[h->fd] = h;
 
-    epoll_event e;
+    epoll_event e = {};
     e.data.fd = h->fd;
     e.events = events;
 
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, h->fd, &e) < 0) {
         Log::e("Failed to insert handler to epoll [add]");
         perror(("add_handler (fd=" + inttostr(h->fd) + ")").c_str());
-        std::cerr.flush();
     } else {
         Log::d("Handler was inserted to fd " + inttostr(h->fd) + " with flags " + eeflagstostr(events));
     }
@@ -167,14 +179,13 @@ void proxy_server::modify_handler(int fd, uint events) {
 }
 
 void proxy_server::remove_handler(int fd) {
+    Log::d("Removing fd(" + inttostr(fd) + ") handler");
     if (fd >= handlers.size() || !handlers[fd]) {
-        Log::e("Removing handler of a non registered file descriptor");
+        Log::e("Removing handler of unregistered file descriptor");
         return;
     }
 
     handlers[fd] = 0;
-
-    Log::d("Removing fd(" + inttostr(fd) + ") handler");
 
     struct epoll_event e;
     e.data.fd = fd;
@@ -214,25 +225,16 @@ bool proxy_server::write_chunk(const handler &h, buffer &buf) {
 
 bool proxy_server::read_chunk(const handler &h, buffer *buf) {
     ssize_t received;
-    Log::d("read_chunk1: fd(" + inttostr(h.fd) + ")");
     if ((received = recv(h.fd, temp_buffer, BUFFER_SIZE, 0)) < 0) {
         perror("read_chunk");
         Log::fatal("fatal in read_chunk");
         //exit(-1);
     }
-    Log::d("read_chunk2: " + inttostr((int) received));
     if (buf != nullptr) {
-        Log::d("read_chunk3");
         buf->put(temp_buffer, (size_t) received);
-        Log::d("read_chunk4");
     }
 
-    std::string s = std::string(temp_buffer, (ulong) received);
-    Log::d("read_chunk5: " + s);
-
-    Log::d("read_chunk6: " + inttostr((int) received));
-
-    Log::d("read_chunk (" + inttostr((int) received) + "): \n\"" + s + "\"");
+    Log::d("read_chunk (" + inttostr((int) received) + "): \n\"" + std::string(temp_buffer, (ulong) received) + "\"");
 
     return received == 0;
 }
@@ -254,7 +256,6 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, ui
         }
 
         Log::d("RESOLVER: \thostname is " + new_hostname + ", port is " + inttostr(port));
-
 
         int client_request_socket;
         struct addrinfo hints, *servinfo, *p;

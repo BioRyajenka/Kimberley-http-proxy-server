@@ -79,14 +79,14 @@ public:
         print("E", message);
     }
 
-    static void d(std::string message) {
+    static void w(std::string message) {
         if (level < 1) return;
-        print("D", message);
+        print("W", message);
     }
 
-    static void w(std::string message) {
+    static void d(std::string message) {
         if (level < 2) return;
-        print("W", message);
+        print("D", message);
     }
 
     static void fatal(std::string message) {
@@ -112,8 +112,7 @@ public:
              * everything before that is the file name. (Don't go beyond 0 though
              * (string terminator)*/
             size_t p = 0;
-            while (messages[i][p] != '(' && messages[i][p] != ' '
-                   && messages[i][p] != 0)
+            while (messages[i][p] != '(' && messages[i][p] != ' ' && messages[i][p] != 0)
                 ++p;
 
             char syscom[256];
@@ -121,6 +120,7 @@ public:
             //last parameter is the file name of the symbol
             system(syscom);
         }
+        free(messages);
 
         fflush(stdout);
         fflush(stderr);

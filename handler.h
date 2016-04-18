@@ -34,10 +34,13 @@ public:
 
 class notifier : public handler {
 public:
+    //TODO: take it's bodies out in .cpp file
     int pipefds[2];
 
     int read_pipe, write_pipe;
+
     notifier(proxy_server *serv) {
+        this->serv = serv;
         pipefds[2] = {};
         pipe(pipefds);
         read_pipe = pipefds[0];
@@ -78,6 +81,8 @@ public:
 
     void disconnect() const {
         handler::disconnect();
+        close(read_pipe);
+        close(write_pipe);
     }
 
 private:
@@ -110,15 +115,15 @@ private:
 
     void resolve_host_ip(std::string, uint flags);
 
-    // retunrs true if all the message was read
-    bool read_message(const handler &h, buffer &buf);
-
     void disconnect() const {
         handler::disconnect();
         if (clrh) {
             clrh->disconnect();
         }
     }
+
+    // retunrs true if all the message was read
+    bool read_message(const handler &h, buffer &buf);
 
     class client_request_handler : public handler {
         friend class proxy_server;

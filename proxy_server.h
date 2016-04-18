@@ -23,7 +23,7 @@ class notifier;
 class proxy_server {
 #define BUFFER_SIZE 1024
 #define TARGET_CONNECTIONS 1000
-#define DEFAULT_RESOLVER_THREADS 20
+#define DEFAULT_RESOLVER_THREADS 1
 
     friend class handler;
 
@@ -37,10 +37,9 @@ class proxy_server {
 
 public:
     proxy_server(std::string host, uint16_t port, int resolver_threads = DEFAULT_RESOLVER_THREADS);
+    ~proxy_server();
 
     void loop();
-
-    void terminate();
 
 protected:
     void add_handler(handler *h, const uint &events);
@@ -68,6 +67,7 @@ private:
     int epfd;//main epoll
 
     std::vector<handler *> handlers;
+    std::vector<hostname_resolver *> hostname_resolvers;
     concurrent_queue<std::function<void()>> hostname_resolve_queue;
     concurrent_queue<std::function<void()>> to_run;
 

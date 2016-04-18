@@ -26,13 +26,9 @@ public:
 
     concurrent_queue &operator=(const concurrent_queue &) = delete;
 
-    // it seems that you should user peek() OR pop() function only. Otherwise there concurrent error will occur
     bool peek(T &res) {
-        //Log::d("okay, peek");
-        std::unique_lock<std::mutex> mlock(mutex);
-        //Log::d("pp1");
+        std::lock_guard<std::mutex> lock(mutex);
         if (queue.empty()) {
-            //Log::d("pp2");
             return false;
         }
         Log::d("pp3");
@@ -43,22 +39,26 @@ public:
         return true;
     }
 
-    T pop() {
+    //TODO: move
+    bool pop(T &res) {
         Log::d("popping");
-        std::unique_lock<std::mutex> lk(mutex);
+        std::unique_lock<std::mutex> lock(mutex);
+        if (releasing) {
+            return false;
+        }
         Log::d("cp1");
-        cond.wait(lk, [this] { return !queue.empty(); });
+        cond.wait(lock, [this] { return !queue.empty(); });
         Log::d("cp2");
-        auto value(queue.front());
+        res = queue.front();
         Log::d("cp3");
         queue.pop();
         Log::d("cp4");
-        return value;
+        return true;
     }
 
+    //TODO: moving instead of copying
     void push(const T &item) {
-        Log::d("pushing");
-        std::lock_guard<std::mutex> lk(mutex);
+        std::lock_guard<std::mutex> lock(mutex);
         Log::d("xx1");
         queue.push(item);
         Log::d("xx2");
@@ -66,10 +66,22 @@ public:
         Log::d("xx3");
     }
 
+    void release_waiters() {
+        std::lock_guard<std::mutex> lock(mutex);
+        releasing = true;
+        cond.notify_all();
+    }
+
+    bool is_releasing() {
+        return releasing;
+    }
+
 private:
     std::queue<T> queue;
     std::mutex mutex;
     std::condition_variable cond;
+
+    bool releasing = false;
 };
 
 #endif //KIMBERLY_COCURRENT_QUEUE_H

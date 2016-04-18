@@ -6,13 +6,13 @@
 #define KIMBERLY_HOSTNAME_RESOLVER_H
 
 #include <pthread.h>
-//#include "proxy_server.h"
 
 class proxy_server;
 
 class hostname_resolver {
 public:
     hostname_resolver(proxy_server *serv) : serv(serv), id(free_id++) { }
+    ~hostname_resolver();
 
     void start();
 

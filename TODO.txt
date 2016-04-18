@@ -1,10 +1,4 @@
-Known issues:
-// 3. https://mc.yandex.ru/metrika/watch.js ; gethostbyname returns 127.0.0.1 for mc.yandex.ru
-
 TODO2: 
-19) gracefully termination of child threads
-20) gracefully termination of all the program
-
 1) explicit, extern words
 3) anonimous namespaces?
 4) const char *const ?!?!?!?!?!!?
@@ -13,15 +7,11 @@ TODO2:
 7) r/l-value links / T&& item?
 11) -rdynamic?
 13) std::ref??
-12) unique_lock/lock_guard
-15) static inside methods
 16) = default
 17) public in inheritance [line]?
 18) std::forward
 
 8) cashing with partial GET methods
-
 9) cashing + cash for hostname resolving
-10) threads
 
 15) alarm with connect https://recalll.co/app/?q=c%20-%20unable%20to%20set%20the%20timeout%20for%20socket%20connect%28%29%20call%20-%20Stack%20Overflow
