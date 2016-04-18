@@ -25,6 +25,7 @@ int main() {
     watch_signal(SIGQUIT);
     watch_signal(SIGABRT);
     watch_signal(SIGSEGV);
+    watch_signal(SIGTERM);
 
     proxy_server s("127.0.0.1", 4500);
     try {

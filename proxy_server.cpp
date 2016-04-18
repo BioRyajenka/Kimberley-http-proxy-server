@@ -285,8 +285,9 @@ cant_connect:
             Log::d("trying to connect to smth");
 
             if (connect(client_request_socket, p->ai_addr, p->ai_addrlen) < 0) {
-                perror("connect");
-                Log::fatal("connect");
+                perror(("connect to " + new_hostname).c_str());
+                //Log::fatal("connect");
+                continue;
             }
 
             Log::d("success");
