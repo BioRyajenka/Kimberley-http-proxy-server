@@ -206,19 +206,15 @@ bool proxy_server::write_chunk(const handler &h, buffer &buf) {
         return false;
     }
     Log::d("writing chunk: \"\n" + buf.string_data() + "\"");
-    //Log::d("(" + inttostr(buf.length()) + "): " + buf.string_data());
-    int kkek = buf.length();
 
     int to_send = std::min(buf.length(), BUFFER_SIZE);
-    //Log::d(inttostr(to_send) + " bytes sended");
     if (send(h.fd, buf.get(to_send), (size_t) to_send, 0) != to_send) {
-        Log::fatal("Error writing to socket");
-        //exit(-1);
+        Log::e("Error writing to socket. Disconnecting.");
+        perror("perror:");
+        buf.stash();//not necessary
+        h.disconnect();
+        return false;
     }
-    //Log::d("(" + inttostr(buf.length()) + "): " + buf.string_data());
-    //Log::d(buf.empty() ? "empty" : "not empty");
-
-    //Log::d("write_chunk(" + inttostr(to_send) + ", " + inttostr(kkek) + ")");
 
     return buf.empty();
 }
@@ -226,8 +222,8 @@ bool proxy_server::write_chunk(const handler &h, buffer &buf) {
 bool proxy_server::read_chunk(const handler &h, buffer *buf) {
     ssize_t received;
     if ((received = recv(h.fd, temp_buffer, BUFFER_SIZE, 0)) < 0) {
-        perror("read_chunk");
-        Log::fatal("fatal in read_chunk");
+        Log::e("Error reading from socket");
+        perror("perror:");
         //exit(-1);
     }
     if (buf != nullptr) {

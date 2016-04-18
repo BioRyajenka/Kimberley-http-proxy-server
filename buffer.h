@@ -13,10 +13,10 @@ public:
     // !caution! don't call trim() (and clear() and put() everything changing data) immediately after this method
     const char *get(int amount);
 
-    void set(const char *const data) {
-        clear();
-        put(data, strlen(data));
-    }
+    // stashing put or get. otherwise throwing logic_error
+    void stash();
+
+    void set(const char *const data);
 
     void put(const char *const data, size_t length);
 
@@ -32,6 +32,12 @@ public:
 private:
     std::string data;
     size_t offset = 0;
+
+    enum {PUT, SET, GET, CLEAR, TRIM, STASH, NOT_MODIFIED} last_method = NOT_MODIFIED;
+    union{
+        size_t prev_offset;
+        size_t prev_data_size;
+    };
 
     // trim an offset
     void trim();
