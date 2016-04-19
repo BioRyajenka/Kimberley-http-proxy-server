@@ -67,7 +67,9 @@ private:
     int epfd;//main epoll
 
     std::vector<handler *> handlers;
+    std::vector<handler *> to_delete;
     std::vector<hostname_resolver *> hostname_resolvers;
+
     concurrent_queue<std::function<void()>> hostname_resolve_queue;
     concurrent_queue<std::function<void()>> to_run;
 

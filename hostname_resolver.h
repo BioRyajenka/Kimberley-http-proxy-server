@@ -12,7 +12,12 @@ class proxy_server;
 class hostname_resolver {
 public:
     hostname_resolver(proxy_server *serv) : serv(serv), id(free_id++) { }
+
     ~hostname_resolver();
+
+    hostname_resolver(const hostname_resolver &) = delete;
+
+    hostname_resolver &operator=(const hostname_resolver &) = delete;
 
     void start();
 

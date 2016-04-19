@@ -104,6 +104,7 @@ void proxy_server::loop() {
                 Log::fatal("fatal");
             } else {
                 Log::e("EINTR");
+                return;
             }
         }
         //Log::d("Epoll events count: " + inttostr(epoll_events_count)); // including notifier_fd
@@ -135,6 +136,10 @@ void proxy_server::loop() {
             to_run_function();
         }
 
+        for (auto h : to_delete) {
+            delete h;
+        }
+
         //printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
         //       (double) (clock() - tStart) / CLOCKS_PER_SEC);
         std::cout.flush();
@@ -146,6 +151,11 @@ void proxy_server::add_handler(handler *h, const uint &events) {
     if (handlers.size() <= h->fd) {
         handlers.resize((size_t) h->fd + 1);
     }
+
+    if (handlers[h->fd]) {
+        Log::e("adding handler fd(" + inttostr(h->fd) + " to not empty space");
+    }
+
     handlers[h->fd] = h;
 
     epoll_event e = {};
@@ -163,12 +173,13 @@ void proxy_server::add_handler(handler *h, const uint &events) {
 void proxy_server::modify_handler(int fd, uint events) {
     struct epoll_event e;
 
+
     if (fd >= handlers.size() || !handlers[fd]) {
         Log::e("Changing handler of unregistered file descriptor: " + inttostr(fd));
         Log::d("size is " + inttostr((int) handlers.size()) + ", handlers[fd] is " + (handlers[fd] ? "yes" : "no"));
         return;
     }
-
+    e = {};
     e.data.fd = fd;
     e.events = events;
 
@@ -181,13 +192,15 @@ void proxy_server::modify_handler(int fd, uint events) {
 void proxy_server::remove_handler(int fd) {
     Log::d("Removing fd(" + inttostr(fd) + ") handler");
     if (fd >= handlers.size() || !handlers[fd]) {
-        Log::e("Removing handler of unregistered file descriptor");
-        return;
+        Log::fatal("Removing handler of unregistered file descriptor");
     }
+
+    to_delete.push_back(handlers[fd]);
 
     handlers[fd] = 0;
 
     struct epoll_event e;
+    e = {};
     e.data.fd = fd;
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &e) < 0) {
         Log::e("Failed to modify epoll events [remove]");
@@ -197,26 +210,6 @@ void proxy_server::remove_handler(int fd) {
     close(fd);
 
     Log::d("success");
-}
-
-/* * 1 * 2 * 3 * read-write functions * 3 * 2 * 1 * */
-
-bool proxy_server::write_chunk(const handler &h, buffer &buf) {
-    if (buf.empty()) {
-        return false;
-    }
-    Log::d("writing chunk: \"\n" + buf.string_data() + "\"");
-
-    int to_send = std::min(buf.length(), BUFFER_SIZE);
-    if (send(h.fd, buf.get(to_send), (size_t) to_send, 0) != to_send) {
-        Log::e("Error writing to socket. Disconnecting.");
-        perror("perror:");
-        buf.stash();//not necessary
-        h.disconnect();
-        return false;
-    }
-
-    return buf.empty();
 }
 
 bool proxy_server::read_chunk(const handler &h, buffer *buf) {
@@ -237,6 +230,26 @@ bool proxy_server::read_chunk(const handler &h, buffer *buf) {
 
 void proxy_server::notify_epoll() {
     notifier_->notify();
+}
+
+/* * 1 * 2 * 3 * read-write functions * 3 * 2 * 1 * */
+
+bool proxy_server::write_chunk(const handler &h, buffer &buf) {
+    if (buf.empty()) {
+        return false;
+    }
+    Log::d("writing chunk: \"\n" + buf.string_data() + "\"");
+
+    int to_send = std::min(buf.length(), BUFFER_SIZE);
+    if (send(h.fd, buf.get(to_send), (size_t) to_send, 0) != to_send) {
+        Log::e("Error writing to socket. Disconnecting.");
+        perror("perror:");
+        buf.stash();//not necessary
+        h.disconnect();
+        return false;
+    }
+
+    return buf.empty();
 }
 
 void proxy_server::add_resolver_task(client_handler *h, std::string hostname, uint flags) {

@@ -47,7 +47,10 @@ public:
             return false;
         }
         Log::d("cp1");
-        cond.wait(lock, [this] { return !queue.empty(); });
+        cond.wait(lock, [this] { return !queue.empty() || releasing; });
+        if (releasing) {
+            return false;
+        }
         Log::d("cp2");
         res = queue.front();
         Log::d("cp3");
