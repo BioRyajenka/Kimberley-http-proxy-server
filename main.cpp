@@ -38,7 +38,7 @@ int main() {
     main_t = pthread_self();
 
     terminator = new std::thread((std::function<void()>) ([]() -> void {
-        std::this_thread::sleep_for(std::chrono::seconds(2));
+        std::this_thread::sleep_for(std::chrono::seconds(10));
         Log::d("terminating");
         pthread_kill(main_t, SIGINT);
     }));

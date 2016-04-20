@@ -16,12 +16,7 @@ void server_handler::handle(const epoll_event &) {
 
     if (client < 0) {
         Log::fatal("Error accepting connection");
-        //return false;
     }
-
-    static struct epoll_event ev;
-    ev.data.fd = client;
-    ev.events = EPOLLIN;
 
     Log::d("Client connected: " + std::string(inet_ntoa(client_addr.sin_addr)) + ":" + inttostr(client_addr.sin_port));
     serv->add_handler(new client_handler(client, serv), EPOLLIN);

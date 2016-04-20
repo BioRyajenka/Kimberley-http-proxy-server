@@ -24,6 +24,7 @@ protected:
     proxy_server *serv;
 public:
     virtual void handle(const epoll_event &) = 0;
+    virtual ~handler() {}
 
     virtual void disconnect() const {
         Log::d("disconnecting fd(" + inttostr(fd) + ")");
@@ -57,6 +58,7 @@ public:
 
         Log::d("write_pipe2 is " + inttostr(write_pipe));
     }
+    virtual ~notifier() {}
 
     void handle(const epoll_event &) {
         int result;
@@ -99,6 +101,7 @@ public:
         message_len = -1;
         message_type = NOT_EVALUATED;
     }
+    virtual ~client_handler() {}
 
     void handle(const epoll_event &);
 
@@ -137,6 +140,8 @@ private:
             clh->clrh = this;
         }
 
+        virtual ~client_request_handler() {}
+
         void handle(const epoll_event &);
 
         void disconnect() const {
@@ -159,6 +164,8 @@ public:
         this->fd = sock;
         this->serv = serv;
     }
+
+    virtual ~server_handler() {}
 
     void handle(const epoll_event &);
 };
