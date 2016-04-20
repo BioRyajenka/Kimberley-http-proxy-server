@@ -146,6 +146,8 @@ void proxy_server::loop() {
         }
         to_delete.clear();
 
+        if (terminating) break;
+
         //printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
         //       (double) (clock() - tStart) / CLOCKS_PER_SEC);
         std::cout.flush();
@@ -216,6 +218,11 @@ void proxy_server::remove_handler(int fd) {
     close(fd);
 
     Log::d("success");
+}
+
+void proxy_server::terminate() {
+    terminating = true;
+    notify_epoll();
 }
 
 bool proxy_server::read_chunk(const handler &h, buffer *buf) {

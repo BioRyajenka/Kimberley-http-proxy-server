@@ -2,24 +2,11 @@
 #include <signal.h>
 
 std::shared_ptr<proxy_server> s;
-std::thread *terminator;
-
-bool joined = false;
 
 void signal_handler(int signum) {
     Log::d("Error code: " + inttostr(signum));
     Log::print_stack_trace(6);
-    Log::d("resetting");
-    s.reset();
-    Log::d("joining");
-    if (!joined) {
-        Log::d("really join");
-        terminator->join();
-    }
-    Log::d("before delete");
-    delete terminator;
-    Log::d("exiting");
-    exit(signum);
+    s->terminate();
 }
 
 void watch_signal(int sig) {
@@ -29,19 +16,9 @@ void watch_signal(int sig) {
     sigaction(sig, &action, NULL);
 }
 
-pthread_t main_t;
-
 int main() {
     Log::add_output(&(std::cout));
     Log::set_level(2);
-
-    main_t = pthread_self();
-
-    terminator = new std::thread((std::function<void()>) ([]() -> void {
-        std::this_thread::sleep_for(std::chrono::seconds(10));
-        Log::d("terminating");
-        pthread_kill(main_t, SIGINT);
-    }));
 
     watch_signal(SIGQUIT);
     watch_signal(SIGABRT);
@@ -57,9 +34,5 @@ int main() {
         Log::print_stack_trace(6);
     }
 
-    s.reset();
-    joined =  true;
-    terminator->join();
-    delete terminator;
     return 0;
 }

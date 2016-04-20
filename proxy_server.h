@@ -41,6 +41,8 @@ public:
 
     void loop();
 
+    void terminate();
+
 protected:
     void add_handler(handler *h, const uint &events);
 
@@ -54,10 +56,9 @@ protected:
     // returns true if recv returned 0
     bool read_chunk(const handler &h, buffer *buf);
 
-protected:
-    void add_resolver_task(client_handler *h, std::string hostname, uint flags);
-
     void notify_epoll();
+
+    void add_resolver_task(client_handler *h, std::string hostname, uint flags);
 
 private:
     uint16_t port;
@@ -76,6 +77,8 @@ private:
     char temp_buffer[BUFFER_SIZE + 1];
 
     notifier *notifier_;
+
+    bool terminating = false;
 };
 
 #endif //KIMBERLY_PROXY_SERVER_H
