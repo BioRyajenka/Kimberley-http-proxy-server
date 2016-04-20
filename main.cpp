@@ -4,17 +4,15 @@
 std::shared_ptr<proxy_server> s;
 std::thread *terminator;
 
-bool caught = false;
+bool joined = false;
 
 void signal_handler(int signum) {
-    if (caught) exit(signum);
-    caught = true;
     Log::d("Error code: " + inttostr(signum));
     Log::print_stack_trace(6);
     Log::d("resetting");
     s.reset();
     Log::d("joining");
-    if (terminator->joinable()) {
+    if (!joined) {
         Log::d("really join");
         terminator->join();
     }
@@ -40,7 +38,7 @@ int main() {
     main_t = pthread_self();
 
     terminator = new std::thread((std::function<void()>) ([]() -> void {
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        std::this_thread::sleep_for(std::chrono::seconds(2));
         Log::d("terminating");
         pthread_kill(main_t, SIGINT);
     }));
@@ -52,7 +50,7 @@ int main() {
     watch_signal(SIGINT);
 
     try {
-        s = std::make_shared<proxy_server>(std::string("127.0.0.1"), 4501);
+        s = std::make_shared<proxy_server>(std::string("127.0.0.1"), 4500);
         s->loop();
     } catch (const std::exception &e) {
         Log::e("Exception " + std::string(e.what()));
@@ -60,6 +58,7 @@ int main() {
     }
 
     s.reset();
+    joined =  true;
     terminator->join();
     delete terminator;
     return 0;

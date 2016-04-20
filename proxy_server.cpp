@@ -9,6 +9,13 @@
 #include <netdb.h>
 
 proxy_server::~proxy_server() {
+    // releasing waiters. necessary to do it first
+    hostname_resolve_queue.release_waiters();
+
+    for (auto hr : hostname_resolvers) {
+        delete hr;
+    }
+
     // if I'll write &h, valgrind will abuse
     for (auto h : handlers) {
         if (h) {
@@ -20,13 +27,6 @@ proxy_server::~proxy_server() {
 
     close(listenerSocket);
     close(epfd);
-
-    // releasing waiters
-    hostname_resolve_queue.release_waiters();
-
-    for (auto hr : hostname_resolvers) {
-        delete hr;
-    }
 }
 
 proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads) {
@@ -88,6 +88,10 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
         hostname_resolvers.back()->start();
     }
 
+    for (auto h : to_delete) {
+        delete h;
+    }
+
     Log::d("Main thread id: " + inttostr((int) pthread_self()));
 }
 
@@ -136,9 +140,11 @@ void proxy_server::loop() {
             to_run_function();
         }
 
+        //TODO: if interruption while loop
         for (auto h : to_delete) {
             delete h;
         }
+        to_delete.clear();
 
         //printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
         //       (double) (clock() - tStart) / CLOCKS_PER_SEC);

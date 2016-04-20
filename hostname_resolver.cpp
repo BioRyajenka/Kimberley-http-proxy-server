@@ -18,7 +18,7 @@ hostname_resolver::~hostname_resolver() {
 }
 
 void hostname_resolver::start() {
-    thread = new std::thread((std::function<void()>) ([this]() -> void {
+    thread = new std::thread((std::function<void()>) ([this] {
         Log::d("resolver thread id: " + inttostr((int) pthread_self()));
         while (1) {
             //Log::d(std::string("serv is ") + (serv == nullptr ? "null" : "not null"));
