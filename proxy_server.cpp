@@ -16,11 +16,19 @@ void proxy_server::run_all_toruns() {
     }
 }
 
+void proxy_server::delete_all_todeletes() {
+    for (auto h : to_delete) {
+        delete h;
+    }
+}
+
 proxy_server::~proxy_server() {
-    // because there can be memory freeing
+    // I'm calling it here because there can be memory freeing
     run_all_toruns();
 
-    // releasing waiters. necessary to do it first
+    delete_all_todeletes();
+
+    // releasing waiters. necessary to call it before deleting handlers
     hostname_resolve_queue.release_waiters();
 
     for (auto hr : hostname_resolvers) {
@@ -99,9 +107,7 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
         hostname_resolvers.back()->start();
     }
 
-    for (auto h : to_delete) {
-        delete h;
-    }
+    delete_all_todeletes();
 
     Log::d("Main thread id: " + inttostr((int) pthread_self()));
 }
@@ -303,7 +309,7 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, ui
         }
 
         to_run.push([h, servinfo, this, flags, new_hostname]() {
-            int client_request_socket;
+            int client_request_socket = 0;
             struct addrinfo *p;
             // loop through all the results and connect to the first we can
             for (p = servinfo; p != NULL; p = p->ai_next) {
@@ -322,7 +328,7 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, ui
                     continue;
                 }
 
-                Log::d("success");
+                Log::d("succeed connecting");
 
                 break; // if we get here, we must have connected successfully
             }

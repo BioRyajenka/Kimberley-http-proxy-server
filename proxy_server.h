@@ -62,6 +62,7 @@ protected:
 
 private:
     void run_all_toruns();
+    void delete_all_todeletes();
 
     uint16_t port;
     in_addr_t host;

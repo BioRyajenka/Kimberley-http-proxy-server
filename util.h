@@ -54,7 +54,7 @@ private:
         fflush(stderr);
         std::cerr.flush();
         std::cout.flush();
-        for (std::ostream *o : targets) {
+        for (const auto &o : targets) {
             o->flush();
             (*o) << result_message << std::endl;
             o->flush();

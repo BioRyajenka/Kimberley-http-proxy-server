@@ -34,5 +34,9 @@ int main() {
         Log::print_stack_trace(6);
     }
 
+    Log::d("finish");
+
+    // necessary, because ~proxy_server() uses public static Log
+    s.reset();
     return 0;
 }
