@@ -61,6 +61,8 @@ protected:
     void add_resolver_task(client_handler *h, std::string hostname, uint flags);
 
 private:
+    void run_all_toruns();
+
     uint16_t port;
     in_addr_t host;
     int listenerSocket;

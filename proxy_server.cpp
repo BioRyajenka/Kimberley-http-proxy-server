@@ -8,7 +8,18 @@
 
 #include <netdb.h>
 
+void proxy_server::run_all_toruns() {
+    std::function<void()> to_run_function;
+    while (to_run.peek(to_run_function)) {
+        Log::d("successful picking");
+        to_run_function();
+    }
+}
+
 proxy_server::~proxy_server() {
+    // because there can be memory freeing
+    run_all_toruns();
+
     // releasing waiters. necessary to do it first
     hostname_resolve_queue.release_waiters();
 
@@ -19,7 +30,7 @@ proxy_server::~proxy_server() {
     // if I'll write &h, valgrind will abuse
     for (auto h : handlers) {
         if (h) {
-            Log::d("!deleting " + inttostr(h->fd));
+            Log::d("!deleting fd(" + inttostr(h->fd) + ")");
             h->disconnect();
             delete h;
         }
@@ -134,11 +145,7 @@ void proxy_server::loop() {
 
         //Log::d("before to_run_function");
 
-        std::function<void()> to_run_function;
-        while (to_run.peek(to_run_function)) {
-            Log::d("successful picking");
-            to_run_function();
-        }
+        run_all_toruns();
 
         //TODO: if interruption while loop
         for (auto h : to_delete) {
@@ -221,6 +228,7 @@ void proxy_server::remove_handler(int fd) {
 }
 
 void proxy_server::terminate() {
+    Log::d("terminating!");
     terminating = true;
     notify_epoll();
 }
@@ -323,13 +331,13 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, ui
                 Log::d("Can't connect");
                 h->output_buffer.set("HTTP/1.1 503 Service Unavailable\r\nContent-Length: 36\r\n\r\n<html>503 Service Unavailable</html>");
                 modify_handler(h->fd, EPOLLOUT);
+                freeaddrinfo(servinfo);
+                return;
             }
 
             freeaddrinfo(servinfo); // all done with this structure
 
-            Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
-                   inttostr(h->fd) + ") with flags " + eeflagstostr(flags) + "; it's buffer is " +
-                   (h->input_buffer.empty() ? "empty" : "not empty"));
+            Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" + inttostr(h->fd) + ")");
             add_handler(new client_handler::client_request_handler(client_request_socket, this, h), flags);
         });
         Log::d("RESOLVER: \tproxy_server.cpp:add_resolver_task");
