@@ -23,10 +23,13 @@ void proxy_server::delete_all_todeletes() {
 }
 
 proxy_server::~proxy_server() {
-    // I'm calling it here because there can be memory freeing
-    run_all_toruns();
-
-    delete_all_todeletes();
+    /*
+     * Strict in this order
+     * stopping_threads
+     * to_run
+     * deleting h's
+     * to_delete
+     */
 
     // releasing waiters. necessary to call it before deleting handlers
     hostname_resolve_queue.release_waiters();
@@ -35,14 +38,18 @@ proxy_server::~proxy_server() {
         delete hr;
     }
 
+    // I'm calling it here because there can be memory freeing
+    run_all_toruns();
+
     // if I'll write &h, valgrind will abuse
     for (auto h : handlers) {
         if (h) {
             Log::d("!deleting fd(" + inttostr(h->fd) + ")");
             h->disconnect();
-            delete h;
         }
     }
+
+    delete_all_todeletes();
 
     close(listenerSocket);
     close(epfd);

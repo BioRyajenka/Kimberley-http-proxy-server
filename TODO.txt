@@ -15,3 +15,6 @@ TODO2:
 
 15) alarm with connect https://recalll.co/app/?q=c%20-%20unable%20to%20set%20the%20timeout%20for%20socket%20connect%28%29%20call%20-%20Stack%20Overflow
 test it with www.google.com:81
+
+
+19) to update lenovo yoga keyboard driver
