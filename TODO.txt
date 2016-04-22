@@ -16,6 +16,5 @@ TODO2:
 
 15) move connect to resolver_thread; replace handlers storing mechanism with smth more appropriate
 
-
 19) to update lenovo yoga keyboard driver
 20) ask dimon about vanya's questions

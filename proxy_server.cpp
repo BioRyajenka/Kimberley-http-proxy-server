@@ -128,7 +128,7 @@ void proxy_server::loop() {
         }
         //Log::d("Epoll events count: " + inttostr(epoll_events_count)); // including notifier_fd
 
-        clock_t tStart = clock();
+        //clock_t tStart = clock();
 
         for (int i = 0; i < epoll_events_count; i++) {
             // Log::d("event " + inttostr(i) + ": " + eetostr(events[i]));
@@ -158,7 +158,7 @@ void proxy_server::loop() {
 
 void proxy_server::add_handler(std::shared_ptr<handler> h, const uint &events) {
     //Log::d("Trying to insert handler to fd " + inttostr(fd));
-    if (handlers.size() <= h->fd) {
+    if (handlers.size() <= (ulong) h->fd) {
         handlers.resize((size_t) h->fd + 1);
     }
 
@@ -185,7 +185,7 @@ void proxy_server::modify_handler(int fd, uint events) {
     struct epoll_event e;
 
 
-    if (fd >= handlers.size() || !handlers[fd]) {
+    if ((ulong) fd >= handlers.size() || !handlers[fd]) {
         Log::e("Changing handler of unregistered file descriptor: " + inttostr(fd));
         Log::d("size is " + inttostr((int) handlers.size()) + ", handlers[fd] is " + (handlers[fd] ? "yes" : "no"));
         return;
@@ -202,7 +202,7 @@ void proxy_server::modify_handler(int fd, uint events) {
 
 void proxy_server::remove_handler(int fd) {
     Log::d("Removing fd(" + inttostr(fd) + ") handler");
-    if (fd >= handlers.size() || !handlers[fd]) {
+    if ((ulong) fd >= handlers.size() || !handlers[fd]) {
         //this situation may occur when this handler was misplaced from handlers by another one and this another was terminated
         Log::e("Removing handler of unregistered file descriptor");
         return;

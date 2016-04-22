@@ -61,11 +61,10 @@ public:
     virtual ~notifier() {}
 
     void handle(const epoll_event &) {
-        int result;
         char ch;
         Log::d("reading from fd " + inttostr(read_pipe));
         //read_pipe = 5;
-        result = read(read_pipe, &ch, 1);
+        read(read_pipe, &ch, 1);
     }
 
     void notify() {

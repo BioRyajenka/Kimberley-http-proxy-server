@@ -116,7 +116,7 @@ public:
                 ++p;
 
             char syscom[256];
-            sprintf(syscom, "addr2line %p -e %.*s", trace[i], p, messages[i]);
+            sprintf(syscom, "addr2line %p -e %.*s", trace[i], (int)p, messages[i]);
             //last parameter is the file name of the symbol
             system(syscom);
         }
