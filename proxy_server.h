@@ -23,7 +23,7 @@ class notifier;
 class proxy_server {
 #define BUFFER_SIZE 1024
 #define TARGET_CONNECTIONS 1000
-#define DEFAULT_RESOLVER_THREADS 1 //20
+#define DEFAULT_RESOLVER_THREADS 20
 
     friend class handler;
 

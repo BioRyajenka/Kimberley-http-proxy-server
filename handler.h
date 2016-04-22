@@ -140,7 +140,9 @@ private:
             clh->clrh = this;
         }
 
-        virtual ~client_request_handler() {}
+        ~client_request_handler() {
+            clh->clrh = 0;
+        }
 
         void handle(const epoll_event &);
 
