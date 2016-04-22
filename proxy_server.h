@@ -59,7 +59,7 @@ protected:
 
     void notify_epoll();
 
-    void add_resolver_task(client_handler *h, std::string hostname, uint flags);
+    void add_resolver_task(int fd, std::string hostname, uint flags);
 
 private:
     void run_all_toruns();

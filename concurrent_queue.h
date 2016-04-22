@@ -79,10 +79,6 @@ public:
         return releasing;
     }
 
-    bool is_empty() {
-
-    }
-
 private:
     std::queue<T> queue;
     std::mutex mutex;

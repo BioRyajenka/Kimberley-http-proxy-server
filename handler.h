@@ -132,7 +132,7 @@ private:
         friend class proxy_server;
 
     public:
-        client_request_handler(int sock, proxy_server *serv, client_handler *clh) {
+        client_request_handler(int sock, proxy_server *serv, std::shared_ptr<client_handler> clh) {
             this->fd = sock;
             this->serv = serv;
             this->clh = clh;
@@ -150,7 +150,7 @@ private:
         }
 
     private:
-        client_handler *clh;
+        std::shared_ptr<client_handler> clh;
 
         bool deleteme = false;
     };

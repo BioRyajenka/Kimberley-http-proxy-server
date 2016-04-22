@@ -151,7 +151,7 @@ void client_handler::handle(const epoll_event &e) {
 
 void client_handler::resolve_host_ip(std::string hostname, uint flags) {
     Log::d("adding resolver task with flags " + inttostr((int) flags));
-    serv->add_resolver_task(this, hostname, flags);
+    serv->add_resolver_task(fd, hostname, flags);
 }
 
 void client_handler::client_request_handler::handle(const epoll_event &e) {

@@ -164,6 +164,7 @@ void proxy_server::add_handler(std::shared_ptr<handler> h, const uint &events) {
 
     if (handlers[h->fd]) {
         Log::e("adding handler fd(" + inttostr(h->fd) + ") to engaged space");
+        to_free.push_back(handlers[h->fd]);
     }
 
     handlers[h->fd] = h;
@@ -173,7 +174,7 @@ void proxy_server::add_handler(std::shared_ptr<handler> h, const uint &events) {
     e.events = events;
 
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, h->fd, &e) < 0) {
-        Log::e("Failed to insert handler to epoll [add]");
+        Log::e("Failed to insert handler to epoll");
         perror(("add_handler (fd=" + inttostr(h->fd) + ")").c_str());
     } else {
         Log::d("Handler was inserted to fd " + inttostr(h->fd) + " with flags " + eeflagstostr(events));
@@ -194,7 +195,7 @@ void proxy_server::modify_handler(int fd, uint events) {
     e.events = events;
 
     if (epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &e) < 0) {
-        Log::e("Failed to modify epoll events " + eetostr(e) + " [modify]");
+        Log::e("Failed to modify epoll event " + eetostr(e));
         perror(("modify_handler (fd=" + inttostr(fd) + ", events=" + inttostr(events) + ")").c_str());
     }
 }
@@ -212,7 +213,7 @@ void proxy_server::remove_handler(int fd) {
     e = {};
     e.data.fd = fd;
     if (epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &e) < 0) {
-        Log::e("Failed to modify epoll events [remove]");
+        Log::e("Failed to remove epoll event");
         perror(("remove_handler (fd=" + inttostr(fd) + ")").c_str());
     }
 
@@ -267,8 +268,8 @@ bool proxy_server::write_chunk(handler *h, buffer &buf) {
     return buf.empty();
 }
 
-void proxy_server::add_resolver_task(client_handler *h, std::string hostname, uint flags) {
-    //hostname_resolve_queue.push(5);
+void proxy_server::add_resolver_task(int fd, std::string hostname, uint flags) {
+    std::shared_ptr<client_handler> h = std::dynamic_pointer_cast<client_handler, handler>(handlers[fd]);
     hostname_resolve_queue.push([this, h, hostname, flags]() {
         Log::d("RESOLVER: \tResolving hostname \"" + hostname + "\"");
         uint16_t port = 80;
