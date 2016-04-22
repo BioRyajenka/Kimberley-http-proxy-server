@@ -12,9 +12,9 @@ TODO2:
 
 8) cashing with partial GET methods
 9) cashing + cash for hostname resolving
+10) -Wall
 
-15) alarm connect with https://recalll.co/app/?q=c%20-%20unable%20to%20set%20the%20timeout%20for%20socket%20connect%28%29%20call%20-%20Stack%20Overflow
-test it with www.google.com:81
+15) move connect to resolver_thread; replace handlers storing mechanism with smth more appropriate
 
 
 19) to update lenovo yoga keyboard driver

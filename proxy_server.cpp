@@ -203,7 +203,9 @@ void proxy_server::modify_handler(int fd, uint events) {
 void proxy_server::remove_handler(int fd) {
     Log::d("Removing fd(" + inttostr(fd) + ") handler");
     if (fd >= handlers.size() || !handlers[fd]) {
-        Log::fatal("Removing handler of unregistered file descriptor");
+        //this situation may occur when this handler was misplaced from handlers by another one and this another was terminated
+        Log::e("Removing handler of unregistered file descriptor");
+        return;
     }
 
     to_free.push_back(handlers[fd]);
@@ -307,17 +309,42 @@ void proxy_server::add_resolver_task(int fd, std::string hostname, uint flags) {
                     continue;
                 }
 
-                //setnonblocking(client_request_socket);
+                setnonblocking(client_request_socket);
 
                 Log::d("trying to connect to smth");
 
-                if (connect(client_request_socket, p->ai_addr, p->ai_addrlen) < 0) {
-                    perror(("connect to " + new_hostname).c_str());
-                    //Log::fatal("connect");
+                if (!connect(client_request_socket, p->ai_addr, p->ai_addrlen)) {
+                    //connected immediately
+                    break;
+                }
+                if (errno == EINTR) {
+                    close(client_request_socket);
+                    break;
+                }
+                if (errno != EINPROGRESS) {
+                    perror("connect");
+                    close(client_request_socket);
                     continue;
                 }
+                //checking timeout
+                fd_set wset;
+                struct timeval timeout;
+                FD_ZERO(&wset);
+                FD_SET(client_request_socket, &wset);
+                timeout.tv_sec = DEFAULT_SECONDS_TIMEOUT;
+                timeout.tv_usec = 0;
 
-                Log::d("succeed connecting");
+                int select_retval = select(FD_SETSIZE, 0, &wset, 0, &timeout);
+                if (select_retval == 0) {
+                    Log::d("timeout expires");
+                    close(client_request_socket);
+                    continue;
+                }
+                if (select_retval == -1) {
+                    perror("select");
+                    close(client_request_socket);
+                    continue;
+                }
 
                 break; // if we get here, we must have connected successfully
             }
@@ -331,11 +358,14 @@ void proxy_server::add_resolver_task(int fd, std::string hostname, uint flags) {
                 return;
             }
 
+            Log::d("succeed connecting");
+
             freeaddrinfo(servinfo); // all done with this structure
 
             Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
                    inttostr(h->fd) + ")");
-            add_handler(std::make_shared<client_handler::client_request_handler>(client_request_socket, this, h), flags);
+            add_handler(std::make_shared<client_handler::client_request_handler>(client_request_socket, this, h),
+                        flags);
         });
         Log::d("RESOLVER: \tproxy_server.cpp:add_resolver_task");
     });
