@@ -16,12 +16,6 @@ void proxy_server::run_all_toruns() {
     }
 }
 
-void proxy_server::delete_all_todeletes() {
-    for (auto h : to_delete) {
-        delete h;
-    }
-}
-
 proxy_server::~proxy_server() {
     /*
      * Strict in this order
@@ -38,7 +32,7 @@ proxy_server::~proxy_server() {
         delete hr;
     }
 
-    // I'm calling it here because there can be memory freeing
+    // I'm calling it here because there may be memory freeing
     run_all_toruns();
 
     // if I'll write &h, valgrind will abuse
@@ -49,7 +43,8 @@ proxy_server::~proxy_server() {
         }
     }
 
-    delete_all_todeletes();
+    // not necessary, actually
+    to_free.clear();
 
     close(listenerSocket);
     close(epfd);
@@ -106,15 +101,13 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
 
     Log::d("Start to listen host");
 
-    add_handler(notifier_ = new notifier(this), EPOLLIN);
-    add_handler(new server_handler(listenerSocket, this), EPOLLIN);
+    add_handler(notifier_ = std::make_shared<notifier>(this), EPOLLIN);
+    add_handler(std::make_shared<server_handler>(listenerSocket, this), EPOLLIN);
 
     for (int i = 0; i < resolver_threads; i++) {
         hostname_resolvers.push_back(new hostname_resolver(this));
         hostname_resolvers.back()->start();
     }
-
-    delete_all_todeletes();
 
     Log::d("Main thread id: " + inttostr((int) pthread_self()));
 }
@@ -122,9 +115,7 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
 void proxy_server::loop() {
     Log::d("Start looping");
     static struct epoll_event events[TARGET_CONNECTIONS];
-    while (1) {
-        //Log::d("pre_epoll_wait");
-
+    while (!terminating) {
         int epoll_events_count;
         if ((epoll_events_count = epoll_wait(epfd, events, TARGET_CONNECTIONS, -1)) < 0) {
             if (errno != EINTR) {
@@ -137,8 +128,6 @@ void proxy_server::loop() {
         }
         //Log::d("Epoll events count: " + inttostr(epoll_events_count)); // including notifier_fd
 
-        //Log::d("after_epoll_wait: " + inttostr(epoll_events_count));
-
         clock_t tStart = clock();
 
         for (int i = 0; i < epoll_events_count; i++) {
@@ -147,26 +136,19 @@ void proxy_server::loop() {
                 close(events[i].data.fd);
             } else {
                 int efd = events[i].data.fd;
-                //Log::d("event " + inttostr(i) + ":" + eetostr(events[i]));
                 if (handlers[efd]) {
                     handlers[efd]->handle(events[i]);
                 } else {
-                    Log::e("Trying to handle fd(" + inttostr(efd) + ") which was deleted: " + eetostr(events[i]));
+                    // actually, it's norm situation.
+                    // it happens when more earlier EE commits disconnection of more later one
+                    Log::w("Trying to handle fd(" + inttostr(efd) + ") which was deleted: " + eetostr(events[i]));
                 }
             }
         }
 
-        //Log::d("before to_run_function");
-
         run_all_toruns();
 
-        //TODO: if interruption while loop
-        for (auto h : to_delete) {
-            delete h;
-        }
-        to_delete.clear();
-
-        if (terminating) break;
+        to_free.clear();
 
         //printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
         //       (double) (clock() - tStart) / CLOCKS_PER_SEC);
@@ -174,7 +156,7 @@ void proxy_server::loop() {
     }
 }
 
-void proxy_server::add_handler(handler *h, const uint &events) {
+void proxy_server::add_handler(std::shared_ptr<handler> h, const uint &events) {
     //Log::d("Trying to insert handler to fd " + inttostr(fd));
     if (handlers.size() <= h->fd) {
         handlers.resize((size_t) h->fd + 1);
@@ -223,8 +205,7 @@ void proxy_server::remove_handler(int fd) {
         Log::fatal("Removing handler of unregistered file descriptor");
     }
 
-    to_delete.push_back(handlers[fd]);
-
+    to_free.push_back(handlers[fd]);
     handlers[fd] = 0;
 
     struct epoll_event e;
@@ -246,9 +227,9 @@ void proxy_server::terminate() {
     notify_epoll();
 }
 
-bool proxy_server::read_chunk(const handler &h, buffer *buf) {
+bool proxy_server::read_chunk(handler *h, buffer *buf) {
     ssize_t received;
-    if ((received = recv(h.fd, temp_buffer, BUFFER_SIZE, 0)) < 0) {
+    if ((received = recv(h->fd, temp_buffer, BUFFER_SIZE, 0)) < 0) {
         Log::e("Error reading from socket");
         perror("perror:");
         //exit(-1);
@@ -268,18 +249,18 @@ void proxy_server::notify_epoll() {
 
 /* * 1 * 2 * 3 * read-write functions * 3 * 2 * 1 * */
 
-bool proxy_server::write_chunk(const handler &h, buffer &buf) {
+bool proxy_server::write_chunk(handler *h, buffer &buf) {
     if (buf.empty()) {
         return false;
     }
     Log::d("writing chunk: \"\n" + buf.string_data() + "\"");
 
     int to_send = std::min(buf.length(), BUFFER_SIZE);
-    if (send(h.fd, buf.get(to_send), (size_t) to_send, 0) != to_send) {
+    if (send(h->fd, buf.get(to_send), (size_t) to_send, 0) != to_send) {
         Log::e("Error writing to socket. Disconnecting.");
         perror("perror:");
         buf.stash();//not necessary
-        h.disconnect();
+        h->disconnect();
         return false;
     }
 
@@ -342,7 +323,8 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, ui
 
             if (p == NULL) {
                 Log::d("Can't connect");
-                h->output_buffer.set("HTTP/1.1 503 Service Unavailable\r\nContent-Length: 36\r\n\r\n<html>503 Service Unavailable</html>");
+                h->output_buffer.set(
+                        "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 36\r\n\r\n<html>503 Service Unavailable</html>");
                 modify_handler(h->fd, EPOLLOUT);
                 freeaddrinfo(servinfo);
                 return;
@@ -350,8 +332,9 @@ void proxy_server::add_resolver_task(client_handler *h, std::string hostname, ui
 
             freeaddrinfo(servinfo); // all done with this structure
 
-            Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" + inttostr(h->fd) + ")");
-            add_handler(new client_handler::client_request_handler(client_request_socket, this, h), flags);
+            Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
+                   inttostr(h->fd) + ")");
+            add_handler(std::make_shared<client_handler::client_request_handler>(client_request_socket, this, h), flags);
         });
         Log::d("RESOLVER: \tproxy_server.cpp:add_resolver_task");
     });

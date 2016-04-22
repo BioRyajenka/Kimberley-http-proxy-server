@@ -19,15 +19,16 @@ void server_handler::handle(const epoll_event &) {
     }
 
     Log::d("Client connected: " + std::string(inet_ntoa(client_addr.sin_addr)) + ":" + inttostr(client_addr.sin_port));
-    serv->add_handler(new client_handler(client, serv), EPOLLIN);
+
+    serv->add_handler(std::make_shared<client_handler>(client, serv), EPOLLIN);
 }
 
-bool client_handler::read_message(const handler &h, buffer &buf) {
+bool client_handler::read_message(handler *h, buffer &buf) {
     int plen = buf.length();
 
     Log::d("read_message1");
     if (serv->read_chunk(h, &buf)) {
-        Log::d("fd(" + inttostr(h.fd) + ") asked for disconnection");
+        Log::d("fd(" + inttostr(h->fd) + ") asked for disconnection");
         disconnect();
         return false;
     }
@@ -86,7 +87,7 @@ void client_handler::handle(const epoll_event &e) {
         Log::d("Client handler: " + eetostr(e));
     }
     if (e.events & EPOLLOUT) {
-        if (serv->write_chunk(*this, output_buffer) && message_type != HTTPS_MODE) {
+        if (serv->write_chunk(this, output_buffer) && message_type != HTTPS_MODE) {
             Log::d("Finished resending host response to client");
             if (message_type == PRE_HTTPS_MODE) {
                 message_type = HTTPS_MODE;
@@ -107,7 +108,7 @@ void client_handler::handle(const epoll_event &e) {
     }
 
     if (e.events & EPOLLIN) {
-        if (read_message(*this, input_buffer) && message_type != HTTPS_MODE) {
+        if (read_message(this, input_buffer) && message_type != HTTPS_MODE) {
             std::string data = input_buffer.string_data();
 
             serv->modify_handler(fd, 0);
@@ -133,7 +134,8 @@ void client_handler::handle(const epoll_event &e) {
                         input_buffer.put(data.c_str(), data.length());
 
                         Log::d("new query is: \"\n" + input_buffer.string_data() + "\"");
-                        Log::d("First line is \"" + input_buffer.string_data().substr(0, input_buffer.string_data().find("\r\n")) + "\"");
+                        Log::d("First line is \"" +
+                               input_buffer.string_data().substr(0, input_buffer.string_data().find("\r\n")) + "\"");
                     }
 
                     resolve_host_ip(hostname, EPOLLOUT);
@@ -154,12 +156,13 @@ void client_handler::resolve_host_ip(std::string hostname, uint flags) {
 
 void client_handler::client_request_handler::handle(const epoll_event &e) {
     if (!deleteme) {
-        Log::d("Client request handler: " + eetostr(e) + ", inputbuffer: " + (clh->input_buffer.empty() ? "empty" : "not empty"));
+        Log::d("Client request handler: " + eetostr(e) + ", inputbuffer: " +
+               (clh->input_buffer.empty() ? "empty" : "not empty"));
         deleteme = true;
     }
     if (e.events & EPOLLOUT) {
         if (!clh->input_buffer.empty()) deleteme = false;
-        if (serv->write_chunk(*this, clh->input_buffer) && clh->message_type != HTTPS_MODE) {
+        if (serv->write_chunk(this, clh->input_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("Finished resending query to host");
             serv->modify_handler(fd, EPOLLIN);
             clh->output_buffer.clear();
@@ -171,7 +174,7 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
 
     if (e.events & EPOLLIN) {
         deleteme = false;
-        if (clh->read_message(*this, clh->output_buffer) && clh->message_type != HTTPS_MODE) {
+        if (clh->read_message(this, clh->output_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("It seems that all message was received.");
             disconnect(); // only me
             serv->modify_handler(clh->fd, EPOLLOUT);

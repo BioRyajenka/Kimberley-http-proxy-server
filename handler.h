@@ -126,12 +126,12 @@ private:
     }
 
     // retunrs true if all the message was read
-    bool read_message(const handler &h, buffer &buf);
+    bool read_message(handler *h, buffer &buf);
 
     class client_request_handler : public handler {
         friend class proxy_server;
 
-    protected:
+    public:
         client_request_handler(int sock, proxy_server *serv, client_handler *clh) {
             this->fd = sock;
             this->serv = serv;
