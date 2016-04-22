@@ -33,7 +33,8 @@ proxy_server::~proxy_server() {
     }
 
     // I'm calling it here because there may be memory freeing
-    run_all_toruns();
+    // [not actually already]
+    // run_all_toruns();
 
     // if I'll write &h, valgrind will abuse
     for (auto h : handlers) {
@@ -131,11 +132,11 @@ void proxy_server::loop() {
         //clock_t tStart = clock();
 
         for (int i = 0; i < epoll_events_count; i++) {
+            int efd = events[i].data.fd;
             // Log::d("event " + inttostr(i) + ": " + eetostr(events[i]));
             if ((events[i].events & EPOLLERR) || events[i].events & EPOLLHUP) {
-                close(events[i].data.fd);
+                remove_handler(efd);
             } else {
-                int efd = events[i].data.fd;
                 if (handlers[efd]) {
                     handlers[efd]->handle(events[i]);
                 } else {
@@ -299,74 +300,80 @@ void proxy_server::add_resolver_task(int fd, std::string hostname, uint flags) {
             return;
         }
 
-        to_run.push([h, servinfo, this, flags, new_hostname]() {
-            int client_request_socket = 0;
-            struct addrinfo *p;
-            // loop through all the results and connect to the first we can
-            for (p = servinfo; p != NULL; p = p->ai_next) {
-                if ((client_request_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-                    perror("socket");
-                    continue;
-                }
+        // trying to connect [thread-safely]
 
-                setnonblocking(client_request_socket);
+        int client_request_socket = 0;
+        struct addrinfo *p;
+        // loop through all the results and connect to the first we can
+        for (p = servinfo; p != NULL; p = p->ai_next) {
+            std::unique_lock<std::mutex> lock(proxy_server::global_socket_mutex);
+            if ((client_request_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+                perror("socket");
+                continue;
+            }
+            lock.unlock();
 
-                Log::d("trying to connect to smth");
+            setnonblocking(client_request_socket);
 
-                if (!connect(client_request_socket, p->ai_addr, p->ai_addrlen)) {
-                    //connected immediately
-                    break;
-                }
-                if (errno == EINTR) {
-                    close(client_request_socket);
-                    break;
-                }
-                if (errno != EINPROGRESS) {
-                    perror("connect");
-                    close(client_request_socket);
-                    continue;
-                }
-                //checking timeout
-                fd_set wset;
-                struct timeval timeout;
-                FD_ZERO(&wset);
-                FD_SET(client_request_socket, &wset);
-                timeout.tv_sec = DEFAULT_SECONDS_TIMEOUT;
-                timeout.tv_usec = 0;
+            Log::d("trying to connect to smth");
 
-                int select_retval = select(FD_SETSIZE, 0, &wset, 0, &timeout);
-                if (select_retval == 0) {
-                    Log::d("timeout expires");
-                    close(client_request_socket);
-                    continue;
-                }
-                if (select_retval == -1) {
-                    perror("select");
-                    close(client_request_socket);
-                    continue;
-                }
+            if (!connect(client_request_socket, p->ai_addr, p->ai_addrlen)) {
+                //connected immediately
+                break;
+            }
+            if (errno == EINTR) {
+                close(client_request_socket);
+                break;
+            }
+            if (errno != EINPROGRESS) {
+                perror("connect");
+                close(client_request_socket);
+                continue;
+            }
+            //checking timeout
+            fd_set wset;
+            struct timeval timeout;
+            FD_ZERO(&wset);
+            FD_SET(client_request_socket, &wset);
+            timeout.tv_sec = DEFAULT_SECONDS_TIMEOUT;
+            timeout.tv_usec = 0;
 
-                break; // if we get here, we must have connected successfully
+            int select_retval = select(FD_SETSIZE, 0, &wset, 0, &timeout);
+            if (select_retval == 0) {
+                Log::d("timeout expires");
+                close(client_request_socket);
+                continue;
+            }
+            if (select_retval == -1) {
+                perror("select");
+                close(client_request_socket);
+                continue;
             }
 
-            if (p == NULL) {
-                Log::d("Can't connect");
+            break; // if we get here, we must have connected successfully
+        }
+
+        if (p == NULL) {
+            freeaddrinfo(servinfo);
+            to_run.push([h, this, new_hostname]() {
+                Log::d("Can't connect to " + new_hostname);
                 h->output_buffer.set(
                         "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 36\r\n\r\n<html>503 Service Unavailable</html>");
                 modify_handler(h->fd, EPOLLOUT);
-                freeaddrinfo(servinfo);
-                return;
-            }
-
-            Log::d("succeed connecting");
-
+            });
+        } else {
             freeaddrinfo(servinfo); // all done with this structure
+            to_run.push([h, client_request_socket, this, flags]() {
+                Log::d("succeed connecting");
 
-            Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
-                   inttostr(h->fd) + ")");
-            add_handler(std::make_shared<client_handler::client_request_handler>(client_request_socket, this, h),
-                        flags);
-        });
+                Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
+                       inttostr(h->fd) + ")");
+                add_handler(std::make_shared<client_handler::client_request_handler>(client_request_socket, this, h),
+                            flags);
+            });
+        }
         Log::d("RESOLVER: \tproxy_server.cpp:add_resolver_task");
     });
 }
+
+std::mutex proxy_server::global_socket_mutex;

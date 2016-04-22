@@ -84,6 +84,9 @@ private:
     std::shared_ptr<notifier> notifier_;
 
     bool terminating = false;
+
+public:
+    static std::mutex global_socket_mutex;
 };
 
 #endif //KIMBERLY_PROXY_SERVER_H

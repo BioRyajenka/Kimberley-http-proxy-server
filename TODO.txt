@@ -12,7 +12,6 @@ TODO2:
 
 8) cashing with partial GET methods
 9) cashing + cash for hostname resolving
-10) -Wall
 
 15) move connect to resolver_thread; replace handlers storing mechanism with smth more appropriate
 
