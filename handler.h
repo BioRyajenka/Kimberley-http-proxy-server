@@ -19,12 +19,19 @@ class handler {
 
     friend class client_handler;
 
+    friend class hostname_resolver;
+
 protected:
     int fd;
     proxy_server *serv;
 public:
+    handler(int fd, proxy_server *serv) : fd(fd), serv(serv) { }
+
+    handler(proxy_server *serv) : serv(serv) { }
+
+    virtual ~handler() { }
+
     virtual void handle(const epoll_event &) = 0;
-    virtual ~handler() {}
 
     virtual void disconnect() const {
         Log::d("disconnecting fd(" + inttostr(fd) + ")");
@@ -40,8 +47,7 @@ public:
 
     int read_pipe, write_pipe;
 
-    notifier(proxy_server *serv) {
-        this->serv = serv;
+    notifier(proxy_server *serv) : handler(serv) {
         pipefds[2] = {};
         pipe(pipefds);
         read_pipe = pipefds[0];
@@ -51,14 +57,15 @@ public:
 
         // make read-end non-blocking
         int flags = fcntl(read_pipe, F_GETFL, 0);
-        fcntl(write_pipe, F_SETFL, flags|O_NONBLOCK);
+        fcntl(write_pipe, F_SETFL, flags | O_NONBLOCK);
 
         // add the read end to the epoll
         fd = read_pipe;
 
         Log::d("write_pipe2 is " + inttostr(write_pipe));
     }
-    virtual ~notifier() {}
+
+    virtual ~notifier() { }
 
     void handle(const epoll_event &) {
         char ch;
@@ -93,14 +100,15 @@ private:
 class client_handler : public handler {
     friend class proxy_server;
 
+    friend class hostname_resolver;
+
 public:
-    client_handler(int sock, proxy_server *serv) {
-        this->fd = sock;
-        this->serv = serv;
+    client_handler(int sock, proxy_server *serv) : handler(sock, serv) {
         message_len = -1;
         message_type = NOT_EVALUATED;
     }
-    virtual ~client_handler() {}
+
+    virtual ~client_handler() { }
 
     void handle(const epoll_event &);
 
@@ -131,9 +139,8 @@ private:
         friend class proxy_server;
 
     public:
-        client_request_handler(int sock, proxy_server *serv, std::shared_ptr<client_handler> clh) {
-            this->fd = sock;
-            this->serv = serv;
+        client_request_handler(int sock, proxy_server *serv, std::shared_ptr<client_handler> clh) : handler(sock,
+                                                                                                            serv) {
             this->clh = clh;
 
             clh->clrh = this;
@@ -159,14 +166,11 @@ private:
 
 class server_handler : public handler {
     friend class proxy_server;
-public:
-    //TODO: inherit constructors
-    server_handler(int sock, proxy_server *serv) {
-        this->fd = sock;
-        this->serv = serv;
-    }
 
-    virtual ~server_handler() {}
+public:
+    server_handler(int sock, proxy_server *serv) : handler(sock, serv) { }
+
+    virtual ~server_handler() { }
 
     void handle(const epoll_event &);
 };

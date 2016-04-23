@@ -1,19 +1,14 @@
 TODO2: 
 1) explicit, extern words
-3) anonimous namespaces?
 4) const char *const ?!?!?!?!?!!?
 15) static struct;
 5) static_assert?
-7) r/l-value links / T&& item?
 11) -rdynamic?
 16) = default
-17) public in inheritance [line]?
-18) std::forward
+17) public, virtual in inheritance?
 
-8) cashing with partial GET methods
-9) cashing + cash for hostname resolving
+9) http cashing (including partial GET methods cashing)
 
-15) move connect to resolver_thread; replace handlers storing mechanism with smth more appropriate
+15) does I really need global_socket_mutex?
 
 19) to update lenovo yoga keyboard driver
-20) ask dimon about vanya's questions

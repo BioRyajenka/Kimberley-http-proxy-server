@@ -20,12 +20,13 @@ class client_handler;
 
 class notifier;
 
-class proxy_server {
 #define BUFFER_SIZE 1024
 #define TARGET_CONNECTIONS 1000
-#define DEFAULT_RESOLVER_THREADS 100
-#define DEFAULT_SECONDS_TIMEOUT 1
+#define RESOLVER_THREADS 100
+#define CONNECTION_TIMEOUT 1
 
+//template <int TARGET_CONNECTIONS = 1000, int RESOLVER_THREADS = 20, int CONNECTION_TIMEOUT = 1, int BUFFER_SIZE = 1024>
+class proxy_server {
     friend class handler;
 
     friend class notifier;
@@ -37,7 +38,7 @@ class proxy_server {
     friend class hostname_resolver;
 
 public:
-    proxy_server(std::string host, uint16_t port, int resolver_threads = DEFAULT_RESOLVER_THREADS);
+    proxy_server(std::string host, uint16_t port, int resolver_threads = RESOLVER_THREADS);
 
     ~proxy_server();
 

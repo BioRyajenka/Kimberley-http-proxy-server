@@ -17,7 +17,7 @@ int strtoint(std::string s) {
         is_negative = true;
         s = s.substr(1, s.length() - 1);
     }
-    for (int i = 0; i < s.length(); i++) {
+    for (size_t i = 0; i < s.length(); i++) {
         res = res * 10 + s[i] - 48;
     }
     return res * (is_negative ? -1 : 1);

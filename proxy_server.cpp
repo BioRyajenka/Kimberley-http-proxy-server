@@ -2,11 +2,9 @@
 // Created by root on 07.01.16.
 //
 
+#include <netdb.h>
 #include "proxy_server.h"
 #include "handler.h"
-#include "util.h"
-
-#include <netdb.h>
 
 void proxy_server::run_all_toruns() {
     std::function<void()> to_run_function;
@@ -47,6 +45,10 @@ proxy_server::~proxy_server() {
     // not necessary, actually
     to_free.clear();
 
+    for(auto iterator = hostname_resolver::cashed_hostnames.begin(); iterator != hostname_resolver::cashed_hostnames.end(); ++iterator) {
+        freeaddrinfo(iterator->second);
+    }
+
     close(listenerSocket);
     close(epfd);
 }
@@ -78,7 +80,7 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
     Log::d("Main listener(fd=" + inttostr(listenerSocket) + ") created!");
     //setnonblocking(listenerSocket);
 
-    if ((epfd = epoll_create(TARGET_CONNECTIONS)) < 0) {
+    if ((epfd = epoll_create( TARGET_CONNECTIONS)) < 0) {
         perror("epoll_create");
         Log::fatal("fatal");
     }
@@ -205,6 +207,7 @@ void proxy_server::remove_handler(int fd) {
     Log::d("Removing fd(" + inttostr(fd) + ") handler");
     if ((ulong) fd >= handlers.size() || !handlers[fd]) {
         //this situation may occur when this handler was misplaced from handlers by another one and this another was terminated
+        //or, e.g., when epoll says fd should be closed and also associated client_handler disconnects
         Log::e("Removing handler of unregistered file descriptor");
         return;
     }
@@ -273,107 +276,7 @@ bool proxy_server::write_chunk(handler *h, buffer &buf) {
 
 void proxy_server::add_resolver_task(int fd, std::string hostname, uint flags) {
     std::shared_ptr<client_handler> h = std::dynamic_pointer_cast<client_handler, handler>(handlers[fd]);
-    hostname_resolve_queue.push([this, h, hostname, flags]() {
-        Log::d("RESOLVER: \tResolving hostname \"" + hostname + "\"");
-        uint16_t port = 80;
-
-        ulong pos = hostname.find(":");
-        std::string new_hostname = hostname.substr(0, pos);
-        if (pos != std::string::npos) {
-            port = (uint16_t) strtoint(hostname.substr(pos + 1));
-        }
-
-        Log::d("RESOLVER: \thostname is " + new_hostname + ", port is " + inttostr(port));
-
-        struct addrinfo hints, *servinfo;
-
-        memset(&hints, 0, sizeof hints);
-        hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
-        hints.ai_socktype = SOCK_STREAM;
-
-        if (getaddrinfo(new_hostname.c_str(), inttostr(port).c_str(), &hints, &servinfo) != 0) {
-            Log::d("RESOLVER: \thostname " + new_hostname + " cannot be resolved");
-            to_run.push([this, h]() {
-                h->output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
-                modify_handler(h->fd, EPOLLOUT);
-            });
-            return;
-        }
-
-        // trying to connect [thread-safely]
-
-        int client_request_socket = 0;
-        struct addrinfo *p;
-        // loop through all the results and connect to the first we can
-        for (p = servinfo; p != NULL; p = p->ai_next) {
-            std::unique_lock<std::mutex> lock(proxy_server::global_socket_mutex);
-            if ((client_request_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-                perror("socket");
-                continue;
-            }
-            lock.unlock();
-
-            setnonblocking(client_request_socket);
-
-            Log::d("trying to connect to smth");
-
-            if (!connect(client_request_socket, p->ai_addr, p->ai_addrlen)) {
-                //connected immediately
-                break;
-            }
-            if (errno == EINTR) {
-                close(client_request_socket);
-                break;
-            }
-            if (errno != EINPROGRESS) {
-                perror("connect");
-                close(client_request_socket);
-                continue;
-            }
-            //checking timeout
-            fd_set wset;
-            struct timeval timeout;
-            FD_ZERO(&wset);
-            FD_SET(client_request_socket, &wset);
-            timeout.tv_sec = DEFAULT_SECONDS_TIMEOUT;
-            timeout.tv_usec = 0;
-
-            int select_retval = select(FD_SETSIZE, 0, &wset, 0, &timeout);
-            if (select_retval == 0) {
-                Log::d("timeout expires");
-                close(client_request_socket);
-                continue;
-            }
-            if (select_retval == -1) {
-                perror("select");
-                close(client_request_socket);
-                continue;
-            }
-
-            break; // if we get here, we must have connected successfully
-        }
-
-        if (p == NULL) {
-            freeaddrinfo(servinfo);
-            to_run.push([h, this, new_hostname]() {
-                Log::d("Can't connect to " + new_hostname);
-                h->output_buffer.set(
-                        "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 36\r\n\r\n<html>503 Service Unavailable</html>");
-                modify_handler(h->fd, EPOLLOUT);
-            });
-        } else {
-            freeaddrinfo(servinfo); // all done with this structure
-            to_run.push([h, client_request_socket, this, flags]() {
-                Log::d("succeed connecting");
-
-                Log::d("Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
-                       inttostr(h->fd) + ")");
-                add_handler(std::make_shared<client_handler::client_request_handler>(client_request_socket, this, h),
-                            flags);
-            });
-        }
-        Log::d("RESOLVER: \tproxy_server.cpp:add_resolver_task");
-    });
+    hostname_resolver::add_task(this, h, hostname, flags);
 }
 
 std::mutex proxy_server::global_socket_mutex;

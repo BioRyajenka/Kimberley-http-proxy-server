@@ -59,14 +59,16 @@ public:
         return true;
     }
 
-    //TODO: moving instead of copying
     void push(const T &item) {
         std::lock_guard<std::mutex> lock(mutex);
-        Log::d("xx1");
         queue.push(item);
-        Log::d("xx2");
         cond.notify_one();
-        Log::d("xx3");
+    }
+
+    void push(const T &&item) {
+        std::lock_guard<std::mutex> lock(mutex);
+        queue.push(std::move(item));
+        cond.notify_one();
     }
 
     void release_waiters() {
