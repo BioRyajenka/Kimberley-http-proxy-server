@@ -3,7 +3,6 @@
 //
 
 #include "handler.h"
-#include "hostname_resolver.h"
 #include <cassert>
 #include <netdb.h>
 
@@ -12,7 +11,7 @@ void server_handler::handle(const epoll_event &) {
     sockaddr_in client_addr;
     socklen_t ca_len = sizeof(client_addr);
 
-    int client = accept(fd, (struct sockaddr *) &client_addr, &ca_len);
+    int client = accept(fd.get_fd(), (struct sockaddr *) &client_addr, &ca_len);
 
     if (client < 0) {
         Log::fatal("Error accepting connection");
@@ -28,7 +27,7 @@ bool client_handler::read_message(handler *h, buffer &buf) {
 
     Log::d("read_message1");
     if (serv->read_chunk(h, &buf)) {
-        Log::d("fd(" + inttostr(h->fd) + ") asked for disconnection");
+        Log::d("fd(" + inttostr(h->fd.get_fd()) + ") asked for disconnection");
         disconnect();
         return false;
     }
@@ -96,13 +95,13 @@ void client_handler::handle(const epoll_event &e) {
                 extract_header(input_buffer.string_data(), input_buffer.length(), "Host", hostname);
                 input_buffer.clear();
                 output_buffer.clear();
-                serv->modify_handler(fd, EPOLLIN | EPOLLOUT);
+                serv->modify_handler(this, EPOLLIN | EPOLLOUT);
                 resolve_host_ip(hostname, EPOLLIN | EPOLLOUT);
             } else {
                 input_buffer.clear();
                 message_len = -1;
                 message_type = NOT_EVALUATED;
-                serv->modify_handler(fd, EPOLLIN);
+                serv->modify_handler(this, EPOLLIN);
             }
         }
     }
@@ -111,14 +110,14 @@ void client_handler::handle(const epoll_event &e) {
         if (read_message(this, input_buffer) && message_type != HTTPS_MODE) {
             std::string data = input_buffer.string_data();
 
-            serv->modify_handler(fd, 0);
+            serv->modify_handler(this, 0);
 
             std::string hostname;
             if (extract_header(data, (int) data.length(), "Host", hostname)) {
                 if (message_type == WITHOUT_BODY && extract_method(data) == "CONNECT") {
                     //output_buffer.set("HTTP/1.0 404 Fail\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
                     output_buffer.set("HTTP/1.0 200 OK\r\nProxy-agent: BotHQ-Agent/1.2\r\n\r\n");
-                    serv->modify_handler(fd, EPOLLOUT);
+                    serv->modify_handler(this, EPOLLOUT);
                     message_type = PRE_HTTPS_MODE;
                     Log::d("entering HTTPS_MODE");
                 } else {
@@ -151,7 +150,7 @@ void client_handler::handle(const epoll_event &e) {
 
 void client_handler::resolve_host_ip(std::string hostname, uint flags) {
     Log::d("adding resolver task with flags " + inttostr((int) flags));
-    serv->add_resolver_task(fd, hostname, flags);
+    serv->add_resolver_task(this, hostname, flags);
 }
 
 void client_handler::client_request_handler::handle(const epoll_event &e) {
@@ -164,7 +163,7 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
         if (!clh->input_buffer.empty()) deleteme = false;
         if (serv->write_chunk(this, clh->input_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("Finished resending query to host");
-            serv->modify_handler(fd, EPOLLIN);
+            serv->modify_handler(this, EPOLLIN);
             clh->output_buffer.clear();
 
             clh->message_len = -1;
@@ -176,8 +175,8 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
         deleteme = false;
         if (clh->read_message(this, clh->output_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("It seems that all message was received.");
+            serv->modify_handler(clh, EPOLLOUT);
             disconnect(); // only me
-            serv->modify_handler(clh->fd, EPOLLOUT);
         }
     }
 }

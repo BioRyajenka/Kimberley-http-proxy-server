@@ -11,6 +11,7 @@
 #include "util.h"
 #include "proxy_server.h"
 #include "buffer.h"
+#include "file_descriptor.h"
 #include <sys/signalfd.h>
 #include <signal.h>
 
@@ -22,10 +23,10 @@ class handler {
     friend class hostname_resolver;
 
 protected:
-    int fd;
+    file_descriptor fd;
     proxy_server *serv;
 public:
-    handler(int fd, proxy_server *serv) : fd(fd), serv(serv) { }
+    handler(file_descriptor fd, proxy_server *serv) : fd(fd), serv(serv) { }
 
     handler(proxy_server *serv) : serv(serv) { }
 
@@ -34,8 +35,8 @@ public:
     virtual void handle(const epoll_event &) = 0;
 
     virtual void disconnect() const {
-        Log::d("disconnecting fd(" + inttostr(fd) + ")");
-        serv->remove_handler(fd);
+        Log::d("disconnecting fd(" + inttostr(fd.get_fd()) + ")");
+        serv->remove_handler(this);
         Log::d("disconnected successful");
     }
 };
@@ -43,53 +44,41 @@ public:
 class notifier : public handler {
 public:
     //TODO: take it's bodies out in .cpp file
-    int pipefds[2];
+    //int pipefds[2];
 
-    int read_pipe, write_pipe;
+    file_descriptor read_pipe, write_pipe;
 
     notifier(proxy_server *serv) : handler(serv) {
-        pipefds[2] = {};
+        int pipefds[2] = {};
         pipe(pipefds);
-        read_pipe = pipefds[0];
-        write_pipe = pipefds[1];
+        read_pipe = file_descriptor(pipefds[0]);
+        write_pipe = file_descriptor(pipefds[1]);
 
-        Log::d("write_pipe is " + inttostr(write_pipe) + ", read_pipe is " + inttostr(read_pipe));
+        Log::d("write_pipe is " + inttostr(write_pipe.get_fd()) + ", read_pipe is " + inttostr(read_pipe.get_fd()));
 
         // make read-end non-blocking
-        int flags = fcntl(read_pipe, F_GETFL, 0);
-        fcntl(write_pipe, F_SETFL, flags | O_NONBLOCK);
+        setnonblocking(read_pipe.get_fd());
 
         // add the read end to the epoll
         fd = read_pipe;
 
-        Log::d("write_pipe2 is " + inttostr(write_pipe));
+        Log::d("write_pipe2 is " + inttostr(write_pipe.get_fd()));
     }
 
     virtual ~notifier() { }
 
     void handle(const epoll_event &) {
         char ch;
-        Log::d("reading from fd " + inttostr(read_pipe));
-        //read_pipe = 5;
-        read(read_pipe, &ch, 1);
+        Log::d("reading from fd " + inttostr(read_pipe.get_fd()));
+        read(read_pipe.get_fd(), &ch, 1);
     }
 
     void notify() {
         Log::d("pre-notifying");
         char ch = 'x';
-        //write_pipe = 6;
-        write(write_pipe, &ch, 1);
+        write(write_pipe.get_fd(), &ch, 1);
         Log::d("successful notifying");
     }
-
-    void disconnect() const {
-        handler::disconnect();
-        close(read_pipe);
-        close(write_pipe);
-    }
-
-private:
-
 };
 
 class client_handler : public handler {
@@ -134,8 +123,7 @@ private:
         friend class proxy_server;
 
     public:
-        client_request_handler(int sock, proxy_server *serv, std::shared_ptr<client_handler> clh) : handler(sock,
-                                                                                                            serv) {
+        client_request_handler(int sock, proxy_server *serv, client_handler *clh) : handler(sock, serv) {
             this->clh = clh;
 
             clh->clrh = this;
@@ -153,7 +141,7 @@ private:
         }
 
     private:
-        std::shared_ptr<client_handler> clh;
+        client_handler *clh;
 
         bool deleteme = false;
     };
@@ -163,7 +151,7 @@ class server_handler : public handler {
     friend class proxy_server;
 
 public:
-    server_handler(int sock, proxy_server *serv) : handler(sock, serv) { }
+    server_handler(file_descriptor sock, proxy_server *serv) : handler(sock, serv) { }
 
     virtual ~server_handler() { }
 

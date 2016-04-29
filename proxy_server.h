@@ -13,6 +13,7 @@
 #include "concurrent_queue.h"
 
 #include "hostname_resolver.h"
+#include "file_descriptor.h"
 
 class handler;
 
@@ -40,8 +41,6 @@ class proxy_server {
 public:
     proxy_server(std::string host, uint16_t port, int resolver_threads = RESOLVER_THREADS);
 
-    ~proxy_server();
-
     void loop();
 
     void terminate();
@@ -49,9 +48,9 @@ public:
 protected:
     void add_handler(std::shared_ptr<handler> h, const uint &events);
 
-    void modify_handler(int fd, uint events);
+    void modify_handler(handler *, uint events);
 
-    void remove_handler(int fd);
+    void remove_handler(const handler *);
 
     // returns true if large_buffer was totally sended to fd
     bool write_chunk(handler *h, buffer &buf);
@@ -59,26 +58,19 @@ protected:
     // returns true if recv returned 0
     bool read_chunk(handler *h, buffer *buf);
 
-    void notify_epoll();
-
-    void add_resolver_task(int fd, std::string hostname, uint flags);
+    void add_resolver_task(client_handler *h, std::string hostname, uint flags);
 
 private:
     void run_all_toruns();
 
-    uint16_t port;
-    in_addr_t host;
-    int listenerSocket;
+    file_descriptor listener_socket;
 
-    int epfd;//main epoll
+    file_descriptor epfd;//main epoll
 
     std::vector<std::shared_ptr<handler>> handlers;
-    std::vector<hostname_resolver *> hostname_resolvers;
+    std::shared_ptr<hostname_resolver> resolver;
 
-    concurrent_queue<std::function<void()>> hostname_resolve_queue;
     concurrent_queue<std::function<void()>> to_run;
-
-    std::vector<std::shared_ptr<handler>> to_free;
 
     char temp_buffer[BUFFER_SIZE + 1];
 
