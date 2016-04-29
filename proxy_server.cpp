@@ -27,27 +27,28 @@ proxy_server::proxy_server(std::string hostname, uint16_t port_number, int resol
     host_in_addr.s_addr = host;
     Log::d("Server host is " + std::string(inet_ntoa(host_in_addr)) + ", port is " + inttostr(ntohs(port)));
 
-    int _listener_socket;
-    if ((_listener_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    int listener_socket;
+    if ((listener_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket");
         Log::fatal("fatal");
     }
-    listener_socket = file_descriptor(_listener_socket);
 
     int enable = 1;
-    if (setsockopt(_listener_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
+    if (setsockopt(listener_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0) {
+        close(listener_socket);
         perror("setsockopt");
         Log::fatal("fatal");
     }
 
-    Log::d("Main listener(fd=" + inttostr(_listener_socket) + ") created!");
+    Log::d("Main listener(fd=" + inttostr(listener_socket) + ") created!");
 
     int _epfd;
     if ((_epfd = epoll_create(TARGET_CONNECTIONS)) < 0) {
+        close(listener_socket);
         perror("epoll_create");
         Log::fatal("fatal");
     }
-    epfd = file_descriptor(epfd);
+    epfd.set_fd(_epfd);
     Log::d("Epoll(fd=" + inttostr(_epfd) + ") created!");
 
     struct sockaddr_in addr;
@@ -55,13 +56,15 @@ proxy_server::proxy_server(std::string hostname, uint16_t port_number, int resol
     addr.sin_addr.s_addr = host;
     addr.sin_port = port;
 
-    if (bind(_listener_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    if (bind(listener_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+        close(listener_socket);
         perror("bind");
         Log::fatal("fatal");
     }
     Log::d("Listener binded to host");
 
-    if (listen(_listener_socket, 10) < 0) {
+    if (listen(listener_socket, 100) < 0) {
+        close(listener_socket);
         perror("listen");
         Log::fatal("fatal");
     }
@@ -99,7 +102,7 @@ void proxy_server::loop() {
             int efd = events[i].data.fd;
             // Log::d("event " + inttostr(i) + ": " + eetostr(events[i]));
             if ((events[i].events & EPOLLERR) || events[i].events & EPOLLHUP) {
-                remove_handler(handlers[efd].get());
+                handlers[efd]->disconnect();
             } else {
                 if (handlers[efd]) {
                     handlers[efd]->handle(events[i]);
@@ -135,9 +138,9 @@ void proxy_server::add_handler(std::shared_ptr<handler> h, const uint &events) {
 
     if (epoll_ctl(epfd.get_fd(), EPOLL_CTL_ADD, h->fd.get_fd(), &e) < 0) {
         Log::e("Failed to insert handler to epoll");
-        perror(("add_handler (fd=" + inttostr(h->fd.get_fd()) + ")").c_str());
+        perror(("add_handler (fd " + inttostr(h->fd.get_fd()) + ")").c_str());
     } else {
-        Log::d("Handler was inserted to fd " + inttostr(h->fd.get_fd()) + " with flags " + eeflagstostr(events));
+        Log::d("Handler was inserted to fd (" + inttostr(h->fd.get_fd()) + ") with flags " + eeflagstostr(events));
     }
 }
 
@@ -157,7 +160,7 @@ void proxy_server::modify_handler(handler *h, uint events) {
 
     if (epoll_ctl(epfd.get_fd(), EPOLL_CTL_MOD, fd, &e) < 0) {
         Log::e("Failed to modify epoll event " + eetostr(e));
-        perror(("modify_handler (fd=" + inttostr(fd) + ", events=" + inttostr(events) + ")").c_str());
+        perror(("modify_handler (fd " + inttostr(fd) + ", events=" + inttostr(events) + ")").c_str());
     }
 }
 
@@ -167,7 +170,7 @@ void proxy_server::remove_handler(const handler *h) {
     if ((ulong) fd >= handlers.size() || !handlers[fd]) {
         //this situation may occur when this handler was misplaced from handlers by another one and this another was terminated
         //or, e.g., when epoll says fd should be closed and also associated client_handler disconnects
-        Log::e("Removing handler of unregistered file descriptor");
+        Log::w("Removing handler of unregistered file descriptor");
         return;
     }
 
@@ -178,7 +181,7 @@ void proxy_server::remove_handler(const handler *h) {
     e.data.fd = fd;
     if (epoll_ctl(epfd.get_fd(), EPOLL_CTL_DEL, fd, &e) < 0) {
         Log::e("Failed to remove epoll event");
-        perror(("remove_handler (fd=" + inttostr(fd) + ")").c_str());
+        perror(("remove_handler (fd " + inttostr(fd) + ")").c_str());
     }
 
     close(fd);

@@ -26,7 +26,7 @@ protected:
     file_descriptor fd;
     proxy_server *serv;
 public:
-    handler(file_descriptor fd, proxy_server *serv) : fd(fd), serv(serv) { }
+    handler(int fd, proxy_server *serv) : fd(fd), serv(serv) { }
 
     handler(proxy_server *serv) : serv(serv) { }
 
@@ -51,8 +51,8 @@ public:
     notifier(proxy_server *serv) : handler(serv) {
         int pipefds[2] = {};
         pipe(pipefds);
-        read_pipe = file_descriptor(pipefds[0]);
-        write_pipe = file_descriptor(pipefds[1]);
+        read_pipe.set_fd(pipefds[0]);
+        write_pipe.set_fd(pipefds[1]);
 
         Log::d("write_pipe is " + inttostr(write_pipe.get_fd()) + ", read_pipe is " + inttostr(read_pipe.get_fd()));
 
@@ -151,7 +151,7 @@ class server_handler : public handler {
     friend class proxy_server;
 
 public:
-    server_handler(file_descriptor sock, proxy_server *serv) : handler(sock, serv) { }
+    server_handler(int sock, proxy_server *serv) : handler(sock, serv) { }
 
     virtual ~server_handler() { }
 

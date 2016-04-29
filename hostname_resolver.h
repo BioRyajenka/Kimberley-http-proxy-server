@@ -48,7 +48,7 @@ private:
 
         worker(hostname_resolver *_resolver) : resolver(_resolver) {
             thread = std::thread((std::function<void()>) ([this] {
-                Log::d("resolver thread id: " + inttostr((int) pthread_self()));
+                Log::d("RESOLVER: resolver thread id: " + inttostr((int) pthread_self()));
                 while (1) {
                     resolver_task task;
                     if (!resolver->queue.pop(task)) {
@@ -66,7 +66,7 @@ private:
 
         ~worker() {
             if (!resolver->queue.is_releasing()) {
-                Log::fatal("hostname_resolve_queue should be released first");
+                Log::fatal("RESOLVER: hostname_resolve_queue should be released first");
             }
             thread.join();
         }
@@ -85,12 +85,12 @@ private:
 
 
             if (resolver->cashed_hostnames.find(new_hostname) != resolver->cashed_hostnames.end()) {
-                Log::d("taking " + new_hostname + " from cash");
+                Log::d("RESOLVER: taking " + new_hostname + " from cash");
                 *result = &resolver->cashed_hostnames[new_hostname];
                 return true;
             }
 
-            Log::d(new_hostname + " wasn't found in cash");
+            Log::d("RESOLVER: " + new_hostname + " wasn't found in cash");
             struct addrinfo hints;
             struct addrinfo *_servinfo;
             memset(&hints, 0, sizeof hints);

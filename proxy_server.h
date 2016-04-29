@@ -23,7 +23,7 @@ class notifier;
 
 #define BUFFER_SIZE 1024
 #define TARGET_CONNECTIONS 1000
-#define RESOLVER_THREADS 100
+#define RESOLVER_THREADS 1
 #define CONNECTION_TIMEOUT 1
 
 //template <int TARGET_CONNECTIONS = 1000, int RESOLVER_THREADS = 20, int CONNECTION_TIMEOUT = 1, int BUFFER_SIZE = 1024>
@@ -62,8 +62,6 @@ protected:
 
 private:
     void run_all_toruns();
-
-    file_descriptor listener_socket;
 
     file_descriptor epfd;//main epoll
 
