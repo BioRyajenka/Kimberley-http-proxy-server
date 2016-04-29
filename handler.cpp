@@ -20,7 +20,6 @@ void server_handler::handle(const epoll_event &) {
 
     Log::d("Client connected: " + std::string(inet_ntoa(client_addr.sin_addr)) + ":" + inttostr(client_addr.sin_port));
 
-    std::lock_guard<std::mutex> lock(proxy_server::global_socket_mutex);
     serv->add_handler(std::make_shared<client_handler>(client, serv), EPOLLIN);
 }
 

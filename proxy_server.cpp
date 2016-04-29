@@ -152,10 +152,6 @@ void proxy_server::loop() {
         run_all_toruns();
 
         to_free.clear();
-
-        //printf("Statistics: %d events handled at: %.2f second(s)\n", epoll_events_count,
-        //       (double) (clock() - tStart) / CLOCKS_PER_SEC);
-        std::cout.flush();
     }
 }
 

@@ -77,11 +77,10 @@ void hostname_resolver::add_task(proxy_server *serv, std::shared_ptr<client_hand
             std::unique_lock<std::mutex> lock(cashing_mutex);
             if (cashed_hostnames.find(new_hostname) != cashed_hostnames.end()) {
                 freeaddrinfo(servinfo);
-                servinfo = cashed_hostnames[new_hostname];
+                servinfo = cashed_hostnames[new_hostname];//TODO: use iterator here
             } else {
-                cashed_hostnames[new_hostname] = servinfo;
+                cashed_hostnames[new_hostname] = servinfo;//TODO: use iterator here
             }
-            lock.unlock();
         }
 
         // trying to connect [thread-safely]
@@ -90,12 +89,10 @@ void hostname_resolver::add_task(proxy_server *serv, std::shared_ptr<client_hand
         struct addrinfo *p;
         // loop through all the results and connect to the first we can
         for (p = servinfo; p != NULL; p = p->ai_next) {
-            std::unique_lock<std::mutex> lock(proxy_server::global_socket_mutex);
             if ((client_request_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
                 perror("socket");
                 continue;
             }
-            lock.unlock();
 
             setnonblocking(client_request_socket);
 

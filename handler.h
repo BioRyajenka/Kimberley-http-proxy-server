@@ -76,11 +76,6 @@ public:
 
     void notify() {
         Log::d("pre-notifying");
-        write_pipe = 6;
-        Log::d("notifying to fd " + inttostr(write_pipe));
-        if (write_pipe != 6) {
-            Log::e("WRITE PIPE NE RAVNO SHESTI!");
-        }
         char ch = 'x';
         //write_pipe = 6;
         write(write_pipe, &ch, 1);

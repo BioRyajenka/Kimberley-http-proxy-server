@@ -8,7 +8,20 @@ TODO2:
 17) public, virtual in inheritance?
 
 9) http cashing (including partial GET methods cashing)
+3) rewrite Log::print using variadic templates
 
 15) does I really need global_socket_mutex?
 
 19) to update lenovo yoga keyboard driver
+
+
+
+
+1) оболочка над fd для close
+2) delete immediately
+3) close in destructor
+4) вынести в Resolver
+
+handler_listener; listener
+
+вынести handlers в просто вектор
