@@ -24,6 +24,7 @@ public:
         Log::d("Closing fd(" + inttostr(fd) + ")");
         if (fd)
             close(fd);
+        Log::d("closed");
     }
 
     int get_fd() const {

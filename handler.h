@@ -69,7 +69,6 @@ public:
     void notify() {
         Log::d("pre-notifying");
         char ch = 'x';
-        //write_pipe = 6;
         write(write_pipe.get_fd(), &ch, 1);
         Log::d("successful notifying");
     }
@@ -111,10 +110,10 @@ private:
     void resolve_host_ip(std::string, uint flags);
 
     void disconnect() const {
-        handler::disconnect();
         if (clrh) {
             clrh->disconnect();
         }
+        handler::disconnect();
     }
 
     // retunrs true if all the message was read

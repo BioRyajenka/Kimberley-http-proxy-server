@@ -73,12 +73,10 @@ private:
     file_descriptor epfd;//main epoll
 
     std::vector<std::shared_ptr<handler>> handlers;
-    std::vector<hostname_resolver *> hostname_resolvers;
 
-    concurrent_queue<std::function<void()>> hostname_resolve_queue;
+    std::shared_ptr<hostname_resolver> resolver;
+
     concurrent_queue<std::function<void()>> to_run;
-
-    std::vector<std::shared_ptr<handler>> to_free;
 
     char temp_buffer[BUFFER_SIZE + 1];
 

@@ -3,9 +3,17 @@
 
 std::shared_ptr<proxy_server> s;
 
+bool term = false;
+
 void signal_handler(int signum) {
+    std::cout << "[][][][][][]cout error code " << signum << std::endl;
     Log::d("Error code: " + inttostr(signum));
     Log::print_stack_trace(6);
+    if (term) {
+        //TODO: it's bad, ofc
+        return;
+    }
+    term = true;
     s->terminate();
 }
 
@@ -36,7 +44,9 @@ int main() {
 
     Log::d("finish");
 
+    term = true;
     // necessary, because ~proxy_server() uses public static Log
     s.reset();
+    Log::d("main finish");
     return 0;
 }

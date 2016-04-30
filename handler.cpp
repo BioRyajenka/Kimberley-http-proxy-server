@@ -176,8 +176,8 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
         deleteme = false;
         if (clh->read_message(this, clh->output_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("It seems that all message was received.");
-            disconnect(); // only me
             serv->modify_handler(clh.get(), EPOLLOUT);
+            disconnect(); // only me
         }
     }
 }

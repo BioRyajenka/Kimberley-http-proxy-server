@@ -23,12 +23,7 @@ proxy_server::~proxy_server() {
      * to_delete
      */
 
-    // releasing waiters. necessary to call it before deleting handlers
-    hostname_resolve_queue.release_waiters();
-
-    for (auto hr : hostname_resolvers) {
-        delete hr;
-    }
+    resolver->terminate();
 
     // I'm calling it here because there may be memory freeing
     // [not actually already]
@@ -41,13 +36,7 @@ proxy_server::~proxy_server() {
             h->disconnect();
         }
     }
-
-    // not necessary, actually
-    to_free.clear();
-
-    for(auto iterator = hostname_resolver::cashed_hostnames.begin(); iterator != hostname_resolver::cashed_hostnames.end(); ++iterator) {
-        freeaddrinfo(iterator->second);
-    }
+    Log::d("~proxy_server finish");
 }
 
 proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads) {
@@ -104,13 +93,11 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
 
     Log::d("Start to listen host");
 
-    add_handler(notifier_ = std::make_shared<notifier>(this), EPOLLIN);
+    notifier_ = std::make_shared<notifier>(this);
+    add_handler(notifier_, EPOLLIN);
     add_handler(std::make_shared<server_handler>(listener_socket, this), EPOLLIN);
 
-    for (int i = 0; i < resolver_threads; i++) {
-        hostname_resolvers.push_back(new hostname_resolver(this));
-        hostname_resolvers.back()->start();
-    }
+    resolver = std::make_shared<hostname_resolver>(resolver_threads);
 
     Log::d("Main thread id: " + inttostr((int) pthread_self()));
 }
@@ -150,8 +137,6 @@ void proxy_server::loop() {
         }
 
         run_all_toruns();
-
-        to_free.clear();
     }
 }
 
@@ -164,7 +149,7 @@ void proxy_server::add_handler(std::shared_ptr<handler> h, const uint &events) {
 
     if (handlers[fd]) {
         Log::e("adding handler fd(" + inttostr(fd) + ") to engaged space");
-        to_free.push_back(handlers[fd]);
+        //handlers[fd] will be removed automatically
     }
 
     handlers[fd] = h;
@@ -175,7 +160,7 @@ void proxy_server::add_handler(std::shared_ptr<handler> h, const uint &events) {
 
     if (epoll_ctl(epfd.get_fd(), EPOLL_CTL_ADD, fd, &e) < 0) {
         Log::e("Failed to insert handler to epoll");
-        perror(("add_handler (fd=" + inttostr(fd) + ")").c_str());
+        perror(("add_handler (fd " + inttostr(fd) + ")").c_str());
     } else {
         Log::d("Handler was inserted to fd " + inttostr(fd) + " with flags " + eeflagstostr(events));
     }
@@ -196,7 +181,7 @@ void proxy_server::modify_handler(const handler *h, uint events) {
 
     if (epoll_ctl(epfd.get_fd(), EPOLL_CTL_MOD, fd, &e) < 0) {
         Log::e("Failed to modify epoll event " + eetostr(e));
-        perror(("modify_handler (fd=" + inttostr(fd) + ", events=" + inttostr(events) + ")").c_str());
+        perror(("modify_handler (fd " + inttostr(fd) + ", events=" + inttostr(events) + ")").c_str());
     }
 }
 
@@ -210,22 +195,25 @@ void proxy_server::remove_handler(const handler *h) {
         return;
     }
 
-    to_free.push_back(handlers[fd]);
-    handlers[fd] = 0;
-
     struct epoll_event e;
     e = {};
     e.data.fd = fd;
     if (epoll_ctl(epfd.get_fd(), EPOLL_CTL_DEL, fd, &e) < 0) {
         Log::e("Failed to remove epoll event");
-        perror(("remove_handler (fd=" + inttostr(fd) + ")").c_str());
+        perror(("remove_handler (fd " + inttostr(fd) + ")").c_str());
     }
+
+    //handlers[fd] will be removed automatically
+    handlers[fd] = 0;
 
     Log::d("success");
 }
 
 void proxy_server::terminate() {
     Log::d("terminating!");
+    if (terminating) {
+        return;
+    }
     terminating = true;
     notify_epoll();
 }
@@ -272,5 +260,80 @@ bool proxy_server::write_chunk(handler *h, buffer &buf) {
 
 void proxy_server::add_resolver_task(int fd, std::string hostname, uint flags) {
     std::shared_ptr<client_handler> h = std::dynamic_pointer_cast<client_handler, handler>(handlers[fd]);
-    hostname_resolver::add_task(this, h, hostname, flags);
+    resolver->add_task(hostname, [this, h, hostname, flags](my_addrinfo *servinfo) {
+        int client_request_socket = 0;
+        struct addrinfo *p;
+        // loop through all the results and connect to the first we can
+        for (p = servinfo->get_info(); p != NULL; p = p->ai_next) {
+            if ((client_request_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+                perror("socket");
+                continue;
+            }
+
+            setnonblocking(client_request_socket);
+
+            Log::d("RESOLVER: trying to connect to smth");
+
+            if (!connect(client_request_socket, p->ai_addr, p->ai_addrlen)) {
+                //connected immediately
+                break;
+            }
+            if (errno == EINTR) {
+                close(client_request_socket);
+                break;
+            }
+            if (errno != EINPROGRESS) {
+                perror("connect");
+                close(client_request_socket);
+                continue;
+            }
+            //checking timeout
+            fd_set wset;
+            struct timeval timeout;
+            FD_ZERO(&wset);
+            FD_SET(client_request_socket, &wset);
+            timeout.tv_sec = CONNECTION_TIMEOUT;
+            timeout.tv_usec = 0;
+
+            int select_retval = select(FD_SETSIZE, 0, &wset, 0, &timeout);
+            if (select_retval == 0) {
+                Log::d("RESOLVER: timeout expires");
+                close(client_request_socket);
+                continue;
+            }
+            if (select_retval == -1) {
+                perror("select");
+                close(client_request_socket);
+                continue;
+            }
+
+            break; // if we get here, we must have connected successfully
+        }
+
+        if (p == NULL) {
+            Log::d("RESOLVER: Can't connect to " + hostname);
+            to_run.push([h, this, hostname]() {
+                h->output_buffer.set("HTTP/1.1 503 Service Unavailable\r\nContent-Length: 36\r\n\r\n"
+                                             "<html>503 Service Unavailable</html>");
+                modify_handler(h.get(), EPOLLOUT);
+            });
+        } else {
+            Log::d("RESOLVER: connection successful");
+            to_run.push([h, client_request_socket, this, flags]() {
+                Log::d("RESOLVER: Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
+                       inttostr(h->fd.get_fd()) + ")");
+                add_handler(std::make_shared<client_handler::client_request_handler>(client_request_socket, this, h),
+                            flags);
+            });
+        }
+
+        notifier_->notify();
+        Log::d("RESOLVER: \tproxy_server.cpp:add_resolver_task");
+    }, [this, hostname, h]() {
+        Log::d("RESOLVER: \thostname " + hostname + " cannot be resolved");
+        to_run.push([this, h]() {
+            h->output_buffer.set("HTTP/1.1 404 Not Found\r\nContent-Length: 26\r\n\r\n<html>404 not found</html>");
+            modify_handler(h.get(), EPOLLOUT);
+        });
+    });
 }
