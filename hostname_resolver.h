@@ -68,7 +68,7 @@ private:
                     } else {
                         task.on_fail();
                     }
-                    delete addrinfo;
+                    //delete addrinfo;
                 }
             }));
         }
@@ -77,7 +77,6 @@ private:
             if (!resolver->queue.is_releasing()) {
                 Log::fatal("RESOLVER: hostname_resolve_queue should be released first");
             }
-            //thread->join();
         }
 
         void join() {
@@ -96,12 +95,12 @@ private:
 
             Log::d("RESOLVER: \thostname is " + new_hostname + ", port is " + inttostr(port));
 
-
-            /*if (resolver->cashed_hostnames.find(new_hostname) != resolver->cashed_hostnames.end()) {
+            auto it = resolver->cashed_hostnames.find(new_hostname);
+            if (it != resolver->cashed_hostnames.end()) {
                 Log::d("RESOLVER: taking " + new_hostname + " from cash");
-                *result = &resolver->cashed_hostnames[new_hostname];
+                *result = &it->second;
                 return true;
-            }*/
+            }
 
             Log::d("RESOLVER: " + new_hostname + " wasn't found in cash");
             struct addrinfo hints;
@@ -113,24 +112,26 @@ private:
             if (getaddrinfo(new_hostname.c_str(), inttostr(port).c_str(), &hints, &_servinfo) != 0) {
                 return false;
             }
-            //std::unique_lock<std::mutex> lock(resolver->cashing_mutex);
-            //if (resolver->cashed_hostnames.find(new_hostname) == resolver->cashed_hostnames.end()) {
-                //TODO: use iterator here
-            //    resolver->cashed_hostnames.insert(std::make_pair(new_hostname, std::move(my_addrinfo(_servinfo))));
-            //}
-            //TODO: use iterator here
-            //*result = &resolver->cashed_hostnames[new_hostname];
-            *result = new my_addrinfo(_servinfo);
+
+            std::unique_lock<std::mutex> lock(resolver->cashing_mutex);
+            it = resolver->cashed_hostnames.find(new_hostname);
+            if (it == resolver->cashed_hostnames.end()) {
+                resolver->cashed_hostnames.insert(std::make_pair(new_hostname, my_addrinfo(_servinfo)));
+            } else {
+                freeaddrinfo(_servinfo);
+            }
+            *result = &it->second;
+            //*result = new my_addrinfo(_servinfo);
             return true;
         }
     };
 
     concurrent_queue<resolver_task> queue;
 
-    //std::map<std::string, my_addrinfo> cashed_hostnames;
-    //std::mutex cashing_mutex;
+    std::map<std::string, my_addrinfo> cashed_hostnames;
+    std::mutex cashing_mutex;
 
-    //just for cleaning up memory
+    //just for cleaning memory up
     std::vector<std::shared_ptr<worker>> workers;
 };
 

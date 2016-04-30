@@ -6,37 +6,8 @@
 #include "proxy_server.h"
 #include "handler.h"
 
-void proxy_server::run_all_toruns() {
-    std::function<void()> to_run_function;
-    while (to_run.peek(to_run_function)) {
-        Log::d("successful picking");
-        to_run_function();
-    }
-}
-
 proxy_server::~proxy_server() {
-    /*
-     * Strict in this order
-     * stopping_threads
-     * to_run
-     * deleting h's
-     * to_delete
-     */
-
     resolver->terminate();
-
-    // I'm calling it here because there may be memory freeing
-    // [not actually already]
-    // run_all_toruns();
-
-    // if I'll write &h, valgrind will abuse
-    for (auto h : handlers) {
-        if (h) {
-            Log::d("!deleting fd(" + inttostr(h->fd.get_fd()) + ")");
-            h->disconnect();
-        }
-    }
-    Log::d("~proxy_server finish");
 }
 
 proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads) {
@@ -97,7 +68,7 @@ proxy_server::proxy_server(std::string host, uint16_t port, int resolver_threads
     add_handler(notifier_, EPOLLIN);
     add_handler(std::make_shared<server_handler>(listener_socket, this), EPOLLIN);
 
-    resolver = std::make_shared<hostname_resolver>(resolver_threads);
+    resolver = std::make_unique<hostname_resolver>(resolver_threads);
 
     Log::d("Main thread id: " + inttostr((int) pthread_self()));
 }
@@ -136,7 +107,11 @@ void proxy_server::loop() {
             }
         }
 
-        run_all_toruns();
+        std::function<void()> to_run_function;
+        while (to_run.peek(to_run_function)) {
+            Log::d("successful picking");
+            to_run_function();
+        }
     }
 }
 

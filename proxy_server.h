@@ -65,8 +65,6 @@ protected:
     void add_resolver_task(int fd, std::string hostname, uint flags);
 
 private:
-    void run_all_toruns();
-
     uint16_t port;
     in_addr_t host;
 
@@ -74,7 +72,7 @@ private:
 
     std::vector<std::shared_ptr<handler>> handlers;
 
-    std::shared_ptr<hostname_resolver> resolver;
+    std::unique_ptr<hostname_resolver> resolver;
 
     concurrent_queue<std::function<void()>> to_run;
 

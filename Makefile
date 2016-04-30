@@ -1,6 +1,6 @@
 # Declaration of variables
 CC = g++
-CC_FLAGS = -w -g -O0 -std=c++11 -rdynamic
+CC_FLAGS = -w -g -O0 -std=c++14 -rdynamic
 LIBS = -lpthread
 
 # File names

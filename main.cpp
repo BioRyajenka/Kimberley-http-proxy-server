@@ -10,7 +10,7 @@ void signal_handler(int signum) {
     Log::d("Error code: " + inttostr(signum));
     Log::print_stack_trace(6);
     if (term) {
-        //TODO: it's bad, ofc
+        Log::d("terminating");
         return;
     }
     term = true;
@@ -28,10 +28,10 @@ int main() {
     Log::add_output(&(std::cout));
     Log::set_level(2);
 
-    watch_signal(SIGQUIT);
+    /*watch_signal(SIGQUIT);
     watch_signal(SIGABRT);
     watch_signal(SIGSEGV);
-    watch_signal(SIGTERM);
+    watch_signal(SIGTERM);*/
     watch_signal(SIGINT);
 
     try {
@@ -44,7 +44,6 @@ int main() {
 
     Log::d("finish");
 
-    term = true;
     // necessary, because ~proxy_server() uses public static Log
     s.reset();
     Log::d("main finish");
