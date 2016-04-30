@@ -137,6 +137,7 @@ private:
 
         void disconnect() const {
             clh->clrh = 0;
+            clh->disconnect();
             handler::disconnect();
         }
 
