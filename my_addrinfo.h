@@ -11,11 +11,14 @@ class my_addrinfo {
     struct addrinfo *info;
 
 public:
+    my_addrinfo(const my_addrinfo &rhs) = delete;
+
     my_addrinfo() {
         info = nullptr;
     }
 
     my_addrinfo(my_addrinfo &&rhs) {
+        Log::d("my_addrinfo::move");
         info = rhs.info;
         rhs.info = nullptr;
     }

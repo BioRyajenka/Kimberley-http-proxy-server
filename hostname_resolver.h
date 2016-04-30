@@ -12,19 +12,7 @@
 
 class hostname_resolver {
 public:
-    hostname_resolver() {}
-
-    hostname_resolver(int threads) {
-        for (int i = 0; i < threads; i++) {
-            workers.push_back(std::make_shared<worker>(this));
-        }
-    }
-
-    void add_task(std::string hostname, std::function<void(my_addrinfo *)> task, std::function<void()> on_fail) {
-        queue.push(resolver_task(hostname, task, on_fail));
-    }
-
-    void terminate() {
+    ~hostname_resolver() {
         Log::d("releasing waiters");
         queue.release_waiters();
 
@@ -33,15 +21,25 @@ public:
         }
     }
 
+    hostname_resolver(int threads) {
+        for (int i = 0; i < threads; i++) {
+            workers.push_back(std::make_unique<worker>(this));
+        }
+    }
+
+    void add_task(std::string hostname, std::function<void(std::shared_ptr<my_addrinfo>)> task, std::function<void()> on_fail) {
+        queue.push(resolver_task(hostname, task, on_fail));
+    }
+
 private:
     struct resolver_task {
         resolver_task() { }
 
-        resolver_task(std::string hostname, std::function<void(my_addrinfo *)> task, std::function<void()> on_fail)
+        resolver_task(std::string hostname, std::function<void(std::shared_ptr<my_addrinfo>)> task, std::function<void()> on_fail)
                 : hostname(hostname), task(task), on_fail(on_fail) { }
 
         std::string hostname;
-        std::function<void(my_addrinfo *)> task;
+        std::function<void(std::shared_ptr<my_addrinfo>)> task;
         std::function<void()> on_fail;
     };
 
@@ -50,20 +48,20 @@ private:
         //worker &operator=(const worker &) = delete;
 
         hostname_resolver *resolver;
-        std::shared_ptr<std::thread> thread;
+        std::unique_ptr<std::thread> thread;
 
     public:
 
         worker(hostname_resolver *_resolver) : resolver(_resolver) {
-            thread = std::make_shared<std::thread>((std::function<void()>) ([this] {
+            thread = std::make_unique<std::thread>((std::function<void()>) ([this] {
                 Log::d("RESOLVER: resolver thread id: " + inttostr((int) pthread_self()));
                 while (1) {
                     resolver_task task;
                     if (!resolver->queue.pop(task)) {
                         return;
                     }
-                    my_addrinfo *addrinfo;
-                    if (resolve_hostname(task.hostname, &addrinfo)) {
+                    std::shared_ptr<my_addrinfo> addrinfo;
+                    if (resolve_hostname(task.hostname, addrinfo)) {
                         task.task(addrinfo);
                     } else {
                         task.on_fail();
@@ -83,7 +81,7 @@ private:
             thread->join();
         }
 
-        bool resolve_hostname(std::string hostname, my_addrinfo **result) {
+        bool resolve_hostname(std::string hostname, std::shared_ptr<my_addrinfo> &result) {
             Log::d("RESOLVER: \tResolving hostname \"" + hostname + "\"");
             uint16_t port = 80;
 
@@ -95,10 +93,10 @@ private:
 
             Log::d("RESOLVER: \thostname is " + new_hostname + ", port is " + inttostr(port));
 
-            auto it = resolver->cashed_hostnames.find(new_hostname);
+            auto it = resolver->cashed_hostnames.find(hostname);
             if (it != resolver->cashed_hostnames.end()) {
                 Log::d("RESOLVER: taking " + new_hostname + " from cash");
-                *result = &it->second;
+                result = it->second;
                 return true;
             }
 
@@ -110,17 +108,23 @@ private:
             hints.ai_socktype = SOCK_STREAM;
 
             if (getaddrinfo(new_hostname.c_str(), inttostr(port).c_str(), &hints, &_servinfo) != 0) {
+                Log::e("RESOLVER: getaddrinfo error");
+                perror("getaddrinfo");
                 return false;
             }
 
             std::unique_lock<std::mutex> lock(resolver->cashing_mutex);
-            it = resolver->cashed_hostnames.find(new_hostname);
+            it = resolver->cashed_hostnames.find(hostname);
             if (it == resolver->cashed_hostnames.end()) {
-                resolver->cashed_hostnames.insert(std::make_pair(new_hostname, my_addrinfo(_servinfo)));
+                Log::d("RESOLVER: ok, not found in cash");
+                result = std::make_shared<my_addrinfo>(_servinfo);
+                resolver->cashed_hostnames.insert(std::make_pair(hostname, result));
             } else {
+                Log::d("RESOLVER: suddenly found in cash");
                 freeaddrinfo(_servinfo);
+                result = it->second;
             }
-            *result = &it->second;
+            Log::d(std::string("RESOLVER: result->ptr is ") + (result->get_info() == nullptr ? "nullptr?!" : "not nullptr"));
             //*result = new my_addrinfo(_servinfo);
             return true;
         }
@@ -128,11 +132,11 @@ private:
 
     concurrent_queue<resolver_task> queue;
 
-    std::map<std::string, my_addrinfo> cashed_hostnames;
+    std::map<std::string, std::shared_ptr<my_addrinfo>> cashed_hostnames;
     std::mutex cashing_mutex;
 
     //just for cleaning memory up
-    std::vector<std::shared_ptr<worker>> workers;
+    std::vector<std::unique_ptr<worker>> workers;
 };
 
 #endif //KIMBERLY_HOSTNAME_RESOLVER_H

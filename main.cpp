@@ -6,7 +6,7 @@ std::shared_ptr<proxy_server> s;
 bool term = false;
 
 void signal_handler(int signum) {
-    std::cout << "[][][][][][]cout error code " << signum << std::endl;
+    //std::cout << "[][][][][][]cout error code " << signum << std::endl;
     Log::d("Error code: " + inttostr(signum));
     Log::print_stack_trace(6);
     if (term) {

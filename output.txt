@@ -1,0 +1,619 @@
+==11872== Memcheck, a memory error detector
+==11872== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+==11872== Using Valgrind-3.10.1 and LibVEX; rerun with -h for copyright info
+==11872== Command: ./run
+==11872== 
+2016-04-30.14:39:25 [D]: Epoll(fd=3) created!
+2016-04-30.14:39:25 [D]: write_pipe is 5, read_pipe is 4
+2016-04-30.14:39:25 [D]: Making fd(4) non-blocking
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 117573376
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:26 [D]: cp1
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 109180672
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:26 [D]: cp1
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 125966080
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 176322304
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 184715008
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 226678528
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 243463936
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 268642048
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 260249344
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 293820160
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 310605568
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 318998272
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 352569088
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 344176384
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 209893120
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 402925312
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 159536896
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 235071232
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 436496128
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 461674240
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 444888832
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 193107712
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 478459648
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 495245056
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 285427456
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 327390976
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 570779392
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 201500416
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 629528320
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 612742912
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 637921024
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 671491840
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 679884544
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 369354496
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 386139904
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 394532608
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 411318016
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 788989696
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 814167808
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 822560512
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 847738624
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 898094848
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 914880256
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 251856640
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 470066944
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 277034752
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 167929600
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 503637760
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 486852352
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 520423168
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 528815872
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 545601280
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 537208576
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 302212864
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 562386688
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 553993984
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 587564800
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 595957504
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 604350208
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 621135616
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 142751488
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 360961792
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 646313728
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 654706432
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 377747200
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 663099136
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 688277248
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 705062656
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 696669952
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 738633472
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 713455360
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 755418880
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 772204288
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 797382400
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 730240768
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 763811584
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 218285824
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 830953216
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 839345920
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 856131328
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 864524032
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 872916736
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 881309440
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 134358784
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 889702144
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 428103424
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 923272960
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 931665664
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 981817088
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 512030464
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 579172096
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 335783680
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:26 [D]: RESOLVER: resolver thread id: 151144192
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 721848064
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 747026176
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 419710720
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:28 [D]: RESOLVER: resolver thread id: 780596992
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 805775104
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: RESOLVER: resolver thread id: 906487552
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:27 [D]: popping
+2016-04-30.14:39:29 [D]: Handler was inserted to fd 4 with flags  EPOLLIN 
+2016-04-30.14:39:29 [D]: Server host is 127.0.0.1, port is 4500
+2016-04-30.14:39:29 [D]: Main listener(fd=6) created!
+2016-04-30.14:39:29 [D]: Listener binded to host
+2016-04-30.14:39:29 [D]: Start to listen host
+2016-04-30.14:39:29 [D]: Handler was inserted to fd 6 with flags  EPOLLIN 
+2016-04-30.14:39:29 [D]: Main thread id: 67346880
+2016-04-30.14:39:29 [D]: Start looping
+2016-04-30.14:39:28 [D]: popping
+2016-04-30.14:39:27 [D]: RESOLVER: resolver thread id: 453281536
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:26 [D]: cp1
+2016-04-30.14:39:26 [D]: popping
+2016-04-30.14:39:29 [D]: popping
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:29 [D]: cp1
+2016-04-30.14:39:34 [D]: Server handler
+2016-04-30.14:39:34 [D]: Client connected: 127.0.0.1:19389
+2016-04-30.14:39:34 [D]: Handler was inserted to fd 7 with flags  EPOLLIN 
+2016-04-30.14:39:34 [D]: Server handler
+2016-04-30.14:39:34 [D]: Client connected: 127.0.0.1:19645
+2016-04-30.14:39:34 [D]: Handler was inserted to fd 8 with flags  EPOLLIN 
+2016-04-30.14:39:34 [D]: Client handler: fd(7), ev.events: EPOLLIN 
+2016-04-30.14:39:34 [D]: read_message1
+2016-04-30.14:39:34 [D]: read_chunk (209): 
+"CONNECT mc.yandex.ru:443 HTTP/1.1
+Host: mc.yandex.ru:443
+Proxy-Connection: keep-alive
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.75 Safari/537.36
+
+"
+2016-04-30.14:39:34 [D]: read_message2
+2016-04-30.14:39:34 [D]: Extracting property 'Content-Length'
+2016-04-30.14:39:34 [D]: ...property was not found
+2016-04-30.14:39:34 [D]: Extracting property 'Transfer-Encoding'
+2016-04-30.14:39:34 [D]: ...property was not found
+2016-04-30.14:39:34 [D]: read_message(209, 209)
+2016-04-30.14:39:34 [D]: Extracting property 'Host'
+2016-04-30.14:39:34 [D]: ...value is mc.yandex.ru:443
+2016-04-30.14:39:34 [D]: entering HTTPS_MODE
+2016-04-30.14:39:34 [D]: Client handler: fd(7), ev.events: EPOLLOUT 
+2016-04-30.14:39:34 [D]: writing chunk(49): 
+"HTTP/1.0 200 OK
+Proxy-agent: BotHQ-Agent/1.2
+
+"
+2016-04-30.14:39:34 [D]: Finished resending host response to client
+2016-04-30.14:39:34 [D]: Extracting property 'Host'
+2016-04-30.14:39:34 [D]: ...value is mc.yandex.ru:443
+2016-04-30.14:39:34 [D]: adding resolver task with flags 5
+2016-04-30.14:39:34 [D]: Client handler: fd(8), ev.events: EPOLLIN 
+2016-04-30.14:39:34 [D]: read_message1
+2016-04-30.14:39:34 [D]: cp2
+2016-04-30.14:39:34 [D]: cp3
+2016-04-30.14:39:34 [D]: cp4
+2016-04-30.14:39:34 [D]: read_chunk (209): 
+"CONNECT mc.yandex.ru:443 HTTP/1.1
+Host: mc.yandex.ru:443
+Proxy-Connection: keep-alive
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.75 Safari/537.36
+
+"
+2016-04-30.14:39:34 [D]: read_message2
+2016-04-30.14:39:34 [D]: Extracting property 'Content-Length'
+2016-04-30.14:39:34 [D]: ...property was not found
+2016-04-30.14:39:34 [D]: Extracting property 'Transfer-Encoding'
+2016-04-30.14:39:34 [D]: ...property was not found
+2016-04-30.14:39:34 [D]: read_message(209, 209)
+2016-04-30.14:39:34 [D]: Extracting property 'Host'
+2016-04-30.14:39:34 [D]: ...value is mc.yandex.ru:443
+2016-04-30.14:39:34 [D]: entering HTTPS_MODE
+2016-04-30.14:39:34 [D]: Client handler: fd(7), ev.events: EPOLLIN  EPOLLOUT 
+2016-04-30.14:39:34 [D]: read_message1
+2016-04-30.14:39:34 [D]: read_chunk (200): 
+" Ã  ¿É˜ˆ7ÇþcÞ÷É2µ¶w)öÛªÁIqDh‹ay+0  À+À/Ì©Ì¨ÌÌÀ
+ÀÀ	À œ 5 / 
+  zÿ        mc.yandex.ru    #           3t        h2spdy/3.1http/1.1uP      
+     "
+2016-04-30.14:39:34 [D]: read_message2
+2016-04-30.14:39:34 [D]: Client handler: fd(8), ev.events: EPOLLOUT 
+2016-04-30.14:39:34 [D]: writing chunk(49): 
+"HTTP/1.0 200 OK
+Proxy-agent: BotHQ-Agent/1.2
+
+"
+2016-04-30.14:39:34 [D]: RESOLVER: 	Resolving hostname "mc.yandex.ru:443"
+2016-04-30.14:39:34 [D]: RESOLVER: 	hostname is mc.yandex.ru, port is 443
+2016-04-30.14:39:34 [D]: RESOLVER: mc.yandex.ru wasn't found in cash
+2016-04-30.14:39:34 [D]: Finished resending host response to client
+2016-04-30.14:39:34 [D]: Extracting property 'Host'
+2016-04-30.14:39:34 [D]: ...value is mc.yandex.ru:443
+2016-04-30.14:39:34 [D]: adding resolver task with flags 5
+2016-04-30.14:39:34 [D]: cp2
+2016-04-30.14:39:34 [D]: cp3
+2016-04-30.14:39:34 [D]: cp4
+2016-04-30.14:39:34 [D]: Client handler: fd(8), ev.events: EPOLLIN  EPOLLOUT 
+2016-04-30.14:39:34 [D]: read_message1
+2016-04-30.14:39:34 [D]: RESOLVER: 	Resolving hostname "mc.yandex.ru:443"
+2016-04-30.14:39:34 [D]: RESOLVER: 	hostname is mc.yandex.ru, port is 443
+2016-04-30.14:39:34 [D]: RESOLVER: mc.yandex.ru wasn't found in cash
+2016-04-30.14:39:34 [D]: read_chunk (200): 
+" Ã  ¿®VÌæÑ·´‡E½oc²òX–ž«l>Å†  À+À/Ì©Ì¨ÌÌÀ
+ÀÀ	À œ 5 / 
+  zÿ        mc.yandex.ru    #           3t        h2spdy/3.1http/1.1uP      
+     "
+2016-04-30.14:39:34 [D]: read_message2
+2016-04-30.14:39:35 [D]: RESOLVER: ok, not found in cash
+2016-04-30.14:39:35 [D]: RESOLVER: result->ptr is not nullptr
+2016-04-30.14:39:35 [D]: RESOLVER: trying to connect mc.yandex.ru:443 ips (servinfo->ptr is not nullptr)
+2016-04-30.14:39:35 [D]: RESOLVER: iteration
+2016-04-30.14:39:35 [D]: Making fd(9) non-blocking
+2016-04-30.14:39:35 [D]: RESOLVER: trying to connect to smth
+2016-04-30.14:39:35 [D]: RESOLVER: normal connection
+2016-04-30.14:39:35 [D]: RESOLVER: connection to mc.yandex.ru:443 successful fd(7)
+2016-04-30.14:39:35 [D]: pre-notifying
+2016-04-30.14:39:35 [D]: pp3
+2016-04-30.14:39:35 [D]: pp4
+2016-04-30.14:39:35 [D]: pp5
+2016-04-30.14:39:35 [D]: successful picking
+2016-04-30.14:39:35 [D]: RESOLVER: Creating client_request socket fd(9) for client fd(7)
+2016-04-30.14:39:35 [D]: Handler was inserted to fd 9 with flags  EPOLLIN  EPOLLOUT 
+2016-04-30.14:39:35 [D]: successful notifying
+2016-04-30.14:39:35 [D]: RESOLVER: 	proxy_server.cpp:add_resolver_task
+2016-04-30.14:39:35 [D]: popping
+2016-04-30.14:39:35 [D]: cp1
+2016-04-30.14:39:35 [D]: reading from fd 4
+2016-04-30.14:39:35 [D]: fd(9), ev.events: EPOLLIN  EPOLLOUT  EPOLLERR  EPOLLHUP with fd(9)
+2016-04-30.14:39:35 [D]: disconnecting fd(9)
+2016-04-30.14:39:35 [D]: Removing fd(9) handler
+2016-04-30.14:39:35 [D]: Closing fd(9)
+2016-04-30.14:39:35 [D]: closed
+2016-04-30.14:39:35 [D]: success
+2016-04-30.14:39:35 [D]: disconnected successful
+2016-04-30.14:39:35 [D]: RESOLVER: suddenly found in cash
+2016-04-30.14:39:35 [D]: RESOLVER: result->ptr is not nullptr
+2016-04-30.14:39:35 [D]: RESOLVER: trying to connect mc.yandex.ru:443 ips (servinfo->ptr is not nullptr)
+2016-04-30.14:39:35 [D]: RESOLVER: iteration
+2016-04-30.14:39:35 [D]: Making fd(9) non-blocking
+2016-04-30.14:39:35 [D]: RESOLVER: trying to connect to smth
+2016-04-30.14:39:35 [D]: RESOLVER: normal connection
+2016-04-30.14:39:35 [D]: RESOLVER: connection to mc.yandex.ru:443 successful fd(8)
+2016-04-30.14:39:35 [D]: pre-notifying
+2016-04-30.14:39:35 [D]: successful notifying
+2016-04-30.14:39:35 [D]: RESOLVER: 	proxy_server.cpp:add_resolver_task
+2016-04-30.14:39:35 [D]: popping
+2016-04-30.14:39:35 [D]: cp1
+2016-04-30.14:39:35 [D]: pp3
+2016-04-30.14:39:35 [D]: pp4
+2016-04-30.14:39:35 [D]: pp5
+2016-04-30.14:39:35 [D]: successful picking
+2016-04-30.14:39:35 [D]: RESOLVER: Creating client_request socket fd(9) for client fd(8)
+2016-04-30.14:39:35 [D]: Handler was inserted to fd 9 with flags  EPOLLIN  EPOLLOUT 
+2016-04-30.14:39:35 [D]: reading from fd 4
+2016-04-30.14:39:35 [D]: fd(9), ev.events: EPOLLIN  EPOLLOUT  EPOLLERR  EPOLLHUP with fd(9)
+2016-04-30.14:39:35 [D]: disconnecting fd(9)
+2016-04-30.14:39:35 [D]: Removing fd(9) handler
+2016-04-30.14:39:35 [D]: Closing fd(9)
+2016-04-30.14:39:35 [D]: closed
+2016-04-30.14:39:35 [D]: success
+2016-04-30.14:39:35 [D]: disconnected successful
+2016-04-30.14:40:04 [D]: Server handler
+2016-04-30.14:40:04 [D]: Client connected: 127.0.0.1:20413
+2016-04-30.14:40:04 [D]: Handler was inserted to fd 9 with flags  EPOLLIN 
+2016-04-30.14:40:04 [D]: Client handler: fd(9), ev.events: EPOLLIN 
+2016-04-30.14:40:04 [D]: read_message1
+2016-04-30.14:40:04 [D]: read_chunk (358): 
+"GET http://www.gstatic.com/generate_204 HTTP/1.1
+Host: www.gstatic.com
+Proxy-Connection: keep-alive
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.75 Safari/537.36
+Accept-Encoding: gzip, deflate, sdch
+Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4
+
+"
+2016-04-30.14:40:04 [D]: read_message2
+2016-04-30.14:40:04 [D]: Extracting property 'Content-Length'
+2016-04-30.14:40:04 [D]: ...property was not found
+2016-04-30.14:40:04 [D]: Extracting property 'Transfer-Encoding'
+2016-04-30.14:40:04 [D]: ...property was not found
+2016-04-30.14:40:04 [D]: read_message(358, 358)
+2016-04-30.14:40:04 [D]: Extracting property 'Host'
+2016-04-30.14:40:04 [D]: ...value is www.gstatic.com
+2016-04-30.14:40:04 [D]: from is 26, hostname is www.gstatic.com
+2016-04-30.14:40:04 [D]: new query is: "
+GET /generate_204 HTTP/1.1
+Host: www.gstatic.com
+Proxy-Connection: keep-alive
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.75 Safari/537.36
+Accept-Encoding: gzip, deflate, sdch
+Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4
+
+"
+2016-04-30.14:40:04 [D]: First line is "GET /generate_204 HTTP/1.1"
+2016-04-30.14:40:04 [D]: adding resolver task with flags 4
+2016-04-30.14:40:04 [D]: cp2
+2016-04-30.14:40:04 [D]: cp3
+2016-04-30.14:40:04 [D]: cp4
+2016-04-30.14:40:04 [D]: RESOLVER: 	Resolving hostname "www.gstatic.com"
+2016-04-30.14:40:04 [D]: RESOLVER: 	hostname is www.gstatic.com, port is 80
+2016-04-30.14:40:04 [D]: RESOLVER: www.gstatic.com wasn't found in cash
+2016-04-30.14:40:04 [D]: Client handler: fd(7), ev.events: EPOLLIN  EPOLLOUT 
+2016-04-30.14:40:04 [D]: read_message1
+2016-04-30.14:40:04 [D]: read_chunk (0): 
+""
+2016-04-30.14:40:04 [D]: fd(7) asked for disconnection
+2016-04-30.14:40:04 [D]: disconnecting fd(7)
+2016-04-30.14:40:04 [D]: Removing fd(7) handler
+2016-04-30.14:40:04 [D]: Closing fd(7)
+2016-04-30.14:40:04 [D]: closed
+2016-04-30.14:40:04 [D]: success
+2016-04-30.14:40:04 [D]: disconnected successful
+2016-04-30.14:40:04 [D]: Client handler: fd(8), ev.events: EPOLLIN  EPOLLOUT 
+2016-04-30.14:40:04 [D]: read_message1
+2016-04-30.14:40:04 [D]: read_chunk (0): 
+""
+2016-04-30.14:40:04 [D]: fd(8) asked for disconnection
+2016-04-30.14:40:04 [D]: disconnecting fd(8)
+2016-04-30.14:40:04 [D]: Removing fd(8) handler
+2016-04-30.14:40:04 [D]: Closing fd(8)
+2016-04-30.14:40:04 [D]: closed
+2016-04-30.14:40:04 [D]: success
+2016-04-30.14:40:04 [D]: disconnected successful
+2016-04-30.14:40:07 [D]: RESOLVER: ok, not found in cash
+2016-04-30.14:40:07 [D]: RESOLVER: result->ptr is not nullptr
+2016-04-30.14:40:07 [D]: RESOLVER: trying to connect www.gstatic.com ips (servinfo->ptr is not nullptr)
+2016-04-30.14:40:07 [D]: RESOLVER: iteration
+2016-04-30.14:40:07 [D]: Making fd(7) non-blocking
+2016-04-30.14:40:07 [D]: RESOLVER: trying to connect to smth
+2016-04-30.14:40:07 [D]: RESOLVER: normal connection
+2016-04-30.14:40:07 [D]: RESOLVER: connection to www.gstatic.com successful fd(9)
+2016-04-30.14:40:07 [D]: pre-notifying
+2016-04-30.14:40:07 [D]: successful notifying
+2016-04-30.14:40:07 [D]: RESOLVER: 	proxy_server.cpp:add_resolver_task
+2016-04-30.14:40:07 [D]: popping
+2016-04-30.14:40:07 [D]: cp1
+2016-04-30.14:40:07 [D]: reading from fd 4
+2016-04-30.14:40:07 [D]: pp3
+2016-04-30.14:40:07 [D]: pp4
+2016-04-30.14:40:07 [D]: pp5
+2016-04-30.14:40:07 [D]: successful picking
+2016-04-30.14:40:07 [D]: RESOLVER: Creating client_request socket fd(7) for client fd(9)
+2016-04-30.14:40:07 [D]: Handler was inserted to fd 7 with flags  EPOLLOUT 
+2016-04-30.14:40:07 [D]: Client request handler: fd(7), ev.events: EPOLLOUT , inputbuffer: not empty
+2016-04-30.14:40:07 [D]: writing chunk(336): 
+"GET /generate_204 HTTP/1.1
+Host: www.gstatic.com
+Proxy-Connection: keep-alive
+Pragma: no-cache
+Cache-Control: no-cache
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.75 Safari/537.36
+Accept-Encoding: gzip, deflate, sdch
+Accept-Language: ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4
+
+"
+2016-04-30.14:40:07 [D]: Finished resending query to host
+2016-04-30.14:40:07 [D]: Client request handler: fd(7), ev.events: EPOLLIN , inputbuffer: empty
+2016-04-30.14:40:07 [D]: read_message1
+2016-04-30.14:40:07 [D]: read_chunk (83): 
+"HTTP/1.1 204 No Content
+Content-Length: 0
+Date: Sat, 30 Apr 2016 11:40:09 GMT
+
+"
+2016-04-30.14:40:07 [D]: read_message2
+2016-04-30.14:40:07 [D]: Extracting property 'Content-Length'
+2016-04-30.14:40:07 [D]: ...value is 0
+2016-04-30.14:40:07 [D]: read_message(83, 83)
+2016-04-30.14:40:07 [D]: It seems that all message was received.
+2016-04-30.14:40:07 [D]: disconnecting fd(7)
+2016-04-30.14:40:07 [D]: Removing fd(7) handler
+2016-04-30.14:40:07 [D]: Closing fd(7)
+2016-04-30.14:40:07 [D]: closed
+2016-04-30.14:40:07 [D]: success
+2016-04-30.14:40:07 [D]: disconnected successful
+2016-04-30.14:40:07 [D]: Client handler: fd(9), ev.events: EPOLLOUT 
+2016-04-30.14:40:07 [D]: writing chunk(83): 
+"HTTP/1.1 204 No Content
+Content-Length: 0
+Date: Sat, 30 Apr 2016 11:40:09 GMT
+
+"
+2016-04-30.14:40:07 [D]: Finished resending host response to client
+2016-04-30.14:40:19 [D]: Error code: 2
+/home/workspace/Kimberly/main.cpp:12 (discriminator 4)
+??:0
+??:0
+/home/workspace/Kimberly/proxy_server.cpp:92
+/home/workspace/Kimberly/main.cpp:45
+Execution path [thread: 67346880]:
+2016-04-30.14:40:19 [D]: terminating!
+2016-04-30.14:40:19 [D]: pre-notifying
+2016-04-30.14:40:19 [D]: successful notifying
+2016-04-30.14:40:19 [E]: EINTR
+2016-04-30.14:40:19 [D]: finish
+2016-04-30.14:40:19 [D]: releasing waiters
+2016-04-30.14:40:22 [D]: Closing fd(5)
+2016-04-30.14:40:22 [D]: closed
+2016-04-30.14:40:22 [D]: Closing fd(4)
+2016-04-30.14:40:22 [D]: closed
+2016-04-30.14:40:22 [D]: Closing fd(6)
+2016-04-30.14:40:22 [D]: closed
+2016-04-30.14:40:22 [D]: Closing fd(9)
+2016-04-30.14:40:22 [D]: closed
+2016-04-30.14:40:22 [D]: Closing fd(3)
+2016-04-30.14:40:22 [D]: closed
+2016-04-30.14:40:22 [D]: main finish
+==11872== 
+==11872== HEAP SUMMARY:
+==11872==     in use at exit: 0 bytes in 0 blocks
+==11872==   total heap usage: 4,507 allocs, 4,507 frees, 440,945 bytes allocated
+==11872== 
+==11872== All heap blocks were freed -- no leaks are possible
+==11872== 
+==11872== For counts of detected and suppressed errors, rerun with: -v
+==11872== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)

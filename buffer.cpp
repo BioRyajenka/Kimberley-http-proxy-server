@@ -48,7 +48,7 @@ void buffer::set(const char *const data) {
 }
 
 bool buffer::empty() {
-    return data.empty();
+    return length() == 0;
 }
 
 int buffer::length() {

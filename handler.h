@@ -142,8 +142,6 @@ private:
 
     private:
         std::shared_ptr<client_handler> clh;
-
-        bool deleteme = false;
     };
 };
 

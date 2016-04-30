@@ -4,12 +4,9 @@ TODO2:
 15) static struct;
 5) static_assert?
 11) -rdynamic?
-16) = default
 17) public, virtual in inheritance?
 
 9) http cashing (including partial GET methods cashing)
 3) rewrite Log::print using variadic templates
-
-15) does I really need global_socket_mutex?
 
 19) to update lenovo yoga keyboard driver

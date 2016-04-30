@@ -24,7 +24,7 @@ class notifier;
 #define BUFFER_SIZE 1024
 #define TARGET_CONNECTIONS 1000
 #define RESOLVER_THREADS 100
-#define CONNECTION_TIMEOUT 1
+#define CONNECTION_TIMEOUT 3
 
 //template <int TARGET_CONNECTIONS = 1000, int RESOLVER_THREADS = 20, int CONNECTION_TIMEOUT = 1, int BUFFER_SIZE = 1024>
 class proxy_server {
@@ -40,8 +40,6 @@ class proxy_server {
 
 public:
     proxy_server(std::string host, uint16_t port, int resolver_threads = RESOLVER_THREADS);
-
-    ~proxy_server();
 
     void loop();
 
@@ -72,8 +70,6 @@ private:
 
     std::vector<std::shared_ptr<handler>> handlers;
 
-    std::unique_ptr<hostname_resolver> resolver;
-
     concurrent_queue<std::function<void()>> to_run;
 
     char temp_buffer[BUFFER_SIZE + 1];
@@ -81,6 +77,10 @@ private:
     std::shared_ptr<notifier> notifier_;
 
     bool terminating = false;
+
+    hostname_resolver resolver;
+
+    //hostname_resolver resolver;
 };
 
 #endif //KIMBERLY_PROXY_SERVER_H

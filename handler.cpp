@@ -63,9 +63,9 @@ bool client_handler::read_message(handler *h, buffer &buf) {
 
     if (message_type == VIA_TRANSFER_ENCODING) {
         while (buf.length() > message_len) {
-            Log::d("kek is  " + inttostr((int) buf.string_data()[message_len - 1]) + " " +
+            /*Log::d("kek is  " + inttostr((int) buf.string_data()[message_len - 1]) + " " +
                    inttostr((int) buf.string_data()[message_len]) + " " +
-                   inttostr((int) buf.string_data()[message_len + 1]));
+                   inttostr((int) buf.string_data()[message_len + 1]));*/
             if (buf.string_data()[message_len] == '0') {
                 return true;
             }
@@ -74,6 +74,8 @@ bool client_handler::read_message(handler *h, buffer &buf) {
                 std::string chunklen = buf.string_data().substr((size_t) message_len, linebreak - message_len);
                 Log::d("Next chunk len is " + chunklen);
                 message_len += chunklen.length() + hextoint(chunklen) + 4;
+            } else {
+                break;
             }
         }
         return false;
@@ -155,13 +157,11 @@ void client_handler::resolve_host_ip(std::string hostname, uint flags) {
 }
 
 void client_handler::client_request_handler::handle(const epoll_event &e) {
-    if (!deleteme) {
+    if (!(e.events & EPOLLOUT) || (e.events & EPOLLIN) || !clh->input_buffer.empty()) {
         Log::d("Client request handler: " + eetostr(e) + ", inputbuffer: " +
                (clh->input_buffer.empty() ? "empty" : "not empty"));
-        deleteme = true;
     }
     if (e.events & EPOLLOUT) {
-        if (!clh->input_buffer.empty()) deleteme = false;
         if (serv->write_chunk(this, clh->input_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("Finished resending query to host");
             serv->modify_handler(this, EPOLLIN);
@@ -173,7 +173,6 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
     }
 
     if (e.events & EPOLLIN) {
-        deleteme = false;
         if (clh->read_message(this, clh->output_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("It seems that all message was received.");
             serv->modify_handler(clh.get(), EPOLLOUT);
