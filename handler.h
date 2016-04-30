@@ -44,41 +44,42 @@ public:
 class notifier : public handler {
 public:
     //TODO: take it's bodies out in .cpp file
-    //int pipefds[2];
-
-    file_descriptor read_pipe, write_pipe;
+    file_descriptor write_pipe;
 
     notifier(proxy_server *serv) : handler(serv) {
         int pipefds[2] = {};
         pipe(pipefds);
-        read_pipe.set_fd(pipefds[0]);
+        fd.set_fd(pipefds[0]);
         write_pipe.set_fd(pipefds[1]);
 
-        Log::d("write_pipe is " + inttostr(write_pipe.get_fd()) + ", read_pipe is " + inttostr(read_pipe.get_fd()));
+        Log::d("write_pipe is " + inttostr(write_pipe.get_fd()) + ", read_pipe is " + inttostr(fd.get_fd()));
 
         // make read-end non-blocking
-        setnonblocking(read_pipe.get_fd());
-
-        // add the read end to the epoll
-        fd = read_pipe;
-
-        Log::d("write_pipe2 is " + inttostr(write_pipe.get_fd()));
+        setnonblocking(fd.get_fd());
     }
 
     virtual ~notifier() { }
 
     void handle(const epoll_event &) {
         char ch;
-        Log::d("reading from fd " + inttostr(read_pipe.get_fd()));
-        read(read_pipe.get_fd(), &ch, 1);
+        Log::d("reading from fd " + inttostr(fd.get_fd()));
+        read(fd.get_fd(), &ch, 1);
     }
 
     void notify() {
         Log::d("pre-notifying");
         char ch = 'x';
+        //write_pipe = 6;
         write(write_pipe.get_fd(), &ch, 1);
         Log::d("successful notifying");
     }
+
+    void disconnect() const {
+        handler::disconnect();
+    }
+
+private:
+
 };
 
 class client_handler : public handler {
@@ -123,9 +124,9 @@ private:
         friend class proxy_server;
 
     public:
-        client_request_handler(int sock, proxy_server *serv, client_handler *clh) : handler(sock, serv) {
+        client_request_handler(int sock, proxy_server *serv, std::shared_ptr<client_handler> clh) : handler(sock,
+                                                                                                            serv) {
             this->clh = clh;
-
             clh->clrh = this;
         }
 
@@ -141,7 +142,7 @@ private:
         }
 
     private:
-        client_handler *clh;
+        std::shared_ptr<client_handler> clh;
 
         bool deleteme = false;
     };

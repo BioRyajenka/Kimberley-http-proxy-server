@@ -3,6 +3,7 @@
 //
 
 #include "handler.h"
+#include "hostname_resolver.h"
 #include <cassert>
 #include <netdb.h>
 
@@ -150,7 +151,7 @@ void client_handler::handle(const epoll_event &e) {
 
 void client_handler::resolve_host_ip(std::string hostname, uint flags) {
     Log::d("adding resolver task with flags " + inttostr((int) flags));
-    serv->add_resolver_task(this, hostname, flags);
+    serv->add_resolver_task(fd.get_fd(), hostname, flags);
 }
 
 void client_handler::client_request_handler::handle(const epoll_event &e) {
@@ -175,8 +176,8 @@ void client_handler::client_request_handler::handle(const epoll_event &e) {
         deleteme = false;
         if (clh->read_message(this, clh->output_buffer) && clh->message_type != HTTPS_MODE) {
             Log::d("It seems that all message was received.");
-            serv->modify_handler(clh, EPOLLOUT);
             disconnect(); // only me
+            serv->modify_handler(clh.get(), EPOLLOUT);
         }
     }
 }

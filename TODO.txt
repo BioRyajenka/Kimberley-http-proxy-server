@@ -16,6 +16,12 @@ TODO2:
 
 
 
+
+1) оболочка над fd для close
 2) delete immediately
-5) сделать event_fd вместо pipe
-6) todos
+3) close in destructor
+4) вынести в Resolver
+
+handler_listener; listener
+
+вынести handlers в просто вектор

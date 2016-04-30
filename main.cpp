@@ -1,7 +1,7 @@
 #include "proxy_server.h"
 #include <signal.h>
 
-std::unique_ptr<proxy_server> s;
+std::shared_ptr<proxy_server> s;
 
 void signal_handler(int signum) {
     Log::d("Error code: " + inttostr(signum));
@@ -27,7 +27,7 @@ int main() {
     watch_signal(SIGINT);
 
     try {
-        s = std::make_unique<proxy_server>(std::string("127.0.0.1"), 4500);
+        s = std::make_shared<proxy_server>(std::string("127.0.0.1"), 4500);
         s->loop();
     } catch (const std::exception &e) {
         Log::e("Exception " + std::string(e.what()));
@@ -36,6 +36,7 @@ int main() {
 
     Log::d("finish");
 
+    // necessary, because ~proxy_server() uses public static Log
     s.reset();
     return 0;
 }
