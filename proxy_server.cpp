@@ -318,7 +318,7 @@ void proxy_server::add_resolver_task(int fd, std::string hostname, uint flags) {
             Log::d("RESOLVER: connection to " + hostname + " successful fd(" + inttostr(h->fd.get_fd()) + ")");
             to_run.push([h, client_request_socket, this, flags]() {
                 Log::d("RESOLVER: Creating client_request socket fd(" + inttostr(client_request_socket) + ") for client fd(" +
-                       inttostr(h->fd.get_fd()) + ")");
+                       inttostr(h->fd.get_fd()) + ") with flags " + inttostr(flags));
                 add_handler(std::make_shared<client_handler::client_request_handler>(client_request_socket, this, h),
                             flags);
             });
